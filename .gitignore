@@ -1,0 +1,23 @@
+# Ignorar entorno virtual
+venv/
+.env/
+*.env
+
+# Ignorar cachés de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignorar configuraciones de PyCharm
+.idea/
+.vscode/
+
+# Ignorar datos pesados
+data/
+
+# Ignorar logs
+*.log
+
+# Ignorar archivos de Conda temporales
+conda-meta/
