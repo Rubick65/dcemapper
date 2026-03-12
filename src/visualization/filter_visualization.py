@@ -57,7 +57,9 @@ class UserParameterDialog(QDialog):
 
     def submit(self):
         submit = True
+        values = {}
         for parameter, info in self.parameter_dict.items():
+
             value = self.input_params[parameter].text()
             predetermined_value = info[0]
             value_type = type(predetermined_value)
@@ -75,7 +77,7 @@ class UserParameterDialog(QDialog):
                     value = value_type(value)
                 if value_type is str and not value:
                     raise ValueError
-                self.input_params[parameter] = value
+                values[parameter] = value
 
             except (ValueError, TypeError):
                 self.input_params[parameter].setText(f"Invalid input for {parameter}!")
