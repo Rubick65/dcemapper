@@ -4,32 +4,55 @@ from pathlib import Path
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QListWidget, QGridLayout, QWidget, \
-    QVBoxLayout, QMenuBar, QMenu, QAbstractItemView
+    QVBoxLayout, QMenuBar, QMenu
 
 
 class NonePersistentMenu(QMenu):
 
     def leaveEvent(self, a0):
+        # When the menu is not under mouse
         if not self.underMouse():
+            # Menu is hidden
             super().hide()
 
 
-class PersistentMenu(QMenu):
+class PersistentMenu(NonePersistentMenu):
 
     def mouseReleaseEvent(self, event):
+        """
+        Overrides default mouse release action, new action
+        only hides the menu when
+        :param event:
+        :return:
+        """
+        # Gets the action at its position
         action = self.actionAt(event.pos())
+
+        # When the action is done in a Persistan Menu option
         if action and action.isCheckable():
+            # The normal action is triggered
             action.trigger()
         else:
+            # If the click is outside, the menu hides
             super().mouseReleaseEvent(event)
 
-    def leaveEvent(self, a0):
-        if not self.underMouse():
-            super().hide()
+
+class DenoiseMenu(PersistentMenu):
+
+    def __init__(self):
+        super().__init__()
+
+    def initMenu(self):
+        self.setTitle("&Denoising")
+
+    def denoising_filter_actions(self):
+        non_local_filter = QAction("&Non local means denoising", self)
+        non_local_filter.setStatusTip("Non local denoising filter")
+        non_local_filter.setCheckable(True)
 
 
 class TopMenu(QMenuBar):
-    # Signal for the select files
+    # Signal for the selected files
     file_signal = pyqtSignal(list)
 
     visible = True
@@ -46,59 +69,107 @@ class TopMenu(QMenuBar):
         self.create_preprocessing_menu()
 
     def create_file_menu(self):
+        """
+        Creates file menu section in the main menu
+        :return: None
+        """
+        # Create open file action
         open_file_action = self.create_open_file_action()
 
-        # Add file option to the menu
-        none_persistent_menu = PersistentMenu("&File", self)
-        none_persistent_menu.addAction(open_file_action)
-        self.addMenu(none_persistent_menu)
+        # Create file menu section
+        file_menu = PersistentMenu("&File", self)
+        # Adds open file option to file menu
+        file_menu.addAction(open_file_action)
+
+        # Adds file menu to main menu
+        self.addMenu(file_menu)
 
     def create_open_file_action(self) -> QAction:
+        """
+        Creates open file action for the file menu
+        :return: Created open file action
+        """
+
         # Opening file action
         open_file_action = QAction("&Open File", self)
-        open_file_action.setStatusTip("This is your button")
+        open_file_action.setStatusTip("Open file action")
+
+        # Open file explorer action
         open_file_action.triggered.connect(self.open_file_triggered)
 
+        # Created action
         return open_file_action
 
     def create_preprocessing_menu(self):
+        """
+        Creates preprocessing menu section
+        :return: None
+        """
 
-        preprocessing_actions = self.create_preprocessing_action()
+        # Create preprocessing actions
+        preprocessing_actions = self.create_preprocessing_actions()
 
+        # Create preprocessing menu
         persistent_menu = PersistentMenu("&Preprocessing", self)
+        # Tracks mouse
         persistent_menu.setMouseTracking(True)
+        # Adds actions to preprocessing menu
         persistent_menu.addActions(preprocessing_actions)
+
+        # Adds preprocessing menu to main menu
         self.addMenu(persistent_menu)
 
-    def create_preprocessing_action(self) -> tuple:
+    def create_preprocessing_actions(self) -> tuple:
+        """
+        Creates preprocessing actions
+        :returns a tuple with all the preprocessing actions
+        """
 
+        # Denoising
         denoising_filter = QAction("&Denoising", self)
         denoising_filter.setStatusTip("Denoising filter")
         denoising_filter.setCheckable(True)
 
-        gibbs_artifact_suppression = QAction("&Gibbs Artifact Suppression", self)
+        # Gibbs artifact suppression
+        gibbs_artifact_suppression = QAction("&Gibbs artifact suppression", self)
         gibbs_artifact_suppression.setStatusTip("Gibbs artifact suppression")
         gibbs_artifact_suppression.setCheckable(True)
 
-        bias_field_correction = QAction("&Bias Field Correction", self)
+        # Bias field correction
+        bias_field_correction = QAction("&Bias field correction", self)
         bias_field_correction.setStatusTip("Bias field correction")
         bias_field_correction.setCheckable(True)
 
         return denoising_filter, gibbs_artifact_suppression, bias_field_correction
 
     def open_file_triggered(self):
+        """
+        Opens PyQt6 file explorer and emits a signal with the path
+        to the selected files
+        :return: Path or paths with the selected files
+        """
+
+        # Widget for file explorer
         dialog = QFileDialog(self)
         dialog.setOption(QFileDialog.Option.DontUseNativeDialog, True)
 
+        # Indicates the original directory
         dialog.setDirectory(r'C:\home')
+        # Only shows existing files
         dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)
 
+        # Filter only for indicated files
         dialog.setNameFilter("('.nii.gz', '.nii')")
+        # Detailed mode
         dialog.setViewMode(QFileDialog.ViewMode.Detail)
 
+        # if file explorer widget is executed
         if dialog.exec():
+            # Stores selected files
             files = dialog.selectedFiles()
+            # If files exists
             if files:
+                # Emits a signal with the path to the files
                 self.file_signal.emit(files)
 
 
@@ -117,7 +188,7 @@ class MainWindow(QMainWindow):
         self.initUI()
 
         # Create the central widget for the file list
-        self.centralWidget = QWidget()
+        self.centralWidget = QWidget(self)
         self.setCentralWidget(self.centralWidget)
 
         self.top_menu = TopMenu()
@@ -130,13 +201,11 @@ class MainWindow(QMainWindow):
         self.setMenuBar(self.top_menu)
         self.top_menu.file_signal.connect(self.receive_file_list)
 
-        # self.open_file_action.files_selected.connect(self.update_list)
-
     def initUI(self):
         # Main window configuration
         self.main_window_configurations()
 
-        layout = QGridLayout()
+        layout = QGridLayout(self)
         self.setLayout(layout)
 
     def receive_file_list(self, files):

@@ -215,6 +215,53 @@ def ascm_denoising(image, params=None, check_params=True):
     return denoised_image, selection
 
 
+def local_pca_denoising(image, gtab, params, check_params=True):
+    """Apply local PCA denoising to the given image using specified parameters.
+
+    Args:
+        image (numpy.ndarray): Input 3D/4D image array to be denoised.
+        gtab (numpy.ndarray): B-values and gradient directions associated with the
+            input image.
+        params (dict or None): Dictionary containing the denoising parameters to be
+            used. If None, the user will be prompted to select the parameters.
+
+    Returns:
+        tuple: A tuple containing the denoised image and the selected denoising
+            parameters.
+    """
+
+    parameters_lpca = {
+        "correct_bias": [True, ""],
+        "smooth": [3, ""],
+        "tau_factor": [2.3, ""],
+        "patch_radius": [2, ""],
+    }
+    if params is None and check_params:
+        selection = info_and_ask_denoising_params(
+            "local PCA denoising", parameters_lpca
+        )
+    elif params is None and not check_params:
+        selection = {key: value[0] for key, value in parameters_lpca.items()}
+    else:
+        selection = params
+
+    sigma = pca_noise_estimate(
+        image,
+        gtab,
+        correct_bias=selection["correct_bias"],
+        smooth=selection["smooth"],
+    )
+    return (
+        localpca(
+            image,
+            sigma,
+            tau_factor=selection["tau_factor"],
+            patch_radius=selection["patch_radius"],
+        ),
+        selection,
+    )
+
+
 def mp_pca_denoising(image, params=None, check_params=True):
     """Apply Marcenko-Pastur PCA denoising to an image using specified parameters.
 
