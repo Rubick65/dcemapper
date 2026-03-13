@@ -17,9 +17,10 @@ class UserParameterDialog(QDialog):
     input_params = {}
     value_signal = {}
 
-    def __init__(self, parameter_dict):
+    def __init__(self, parameter_dict, filter_name):
         super().__init__()
         self.parameter_dict = parameter_dict
+        self.filter_name = filter_name
         self.initUI()
 
     def initUI(self):
@@ -39,8 +40,13 @@ class UserParameterDialog(QDialog):
 
         vertical_layout.setSizeConstraint(QVBoxLayout.SizeConstraint.SetMinimumSize)
 
+        label_title = QLabel(f"{self.filter_name.capitalize()}")
+        label_title.setStyleSheet("font-size: 20px; font-weight: bold")
+
+        vertical_layout.addWidget(label_title, alignment=Qt.AlignmentFlag.AlignCenter)
+
         for parameter, info in parameter_dict.items():
-            label_text = QLabel(text=f"[{parameter}]: {info[1]}")
+            label_text = QLabel(f"[{parameter}]: {info[1]}")
             vertical_layout.addWidget(label_text, alignment=Qt.AlignmentFlag.AlignCenter)
 
             input_param = ClickLabel()
@@ -107,16 +113,16 @@ class UserParameterDialog(QDialog):
 
     def remove_invalid_input_text(self):
         input_text = self.sender()
-        
+
         if input_text:
             input_text.clear()
             input_text.setStyleSheet("")
             input_text.clicked.disconnect()
 
 
-def ask_user_parameters(parameter_dict):
+def ask_user_parameters(parameter_dict: dict, filter_name: str):
     app = QApplication.instance() or QApplication(sys.argv)
-    window = UserParameterDialog(parameter_dict)
+    window = UserParameterDialog(parameter_dict, filter_name)
 
     if window.exec() == QDialog.DialogCode.Accepted:
         return window.value_signal
