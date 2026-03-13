@@ -27,8 +27,7 @@ def denoise():
     example_file = os.path.join(data_path, 'example4d.nii.gz')
     data, affine = load_nifti(example_file)
 
-
-    img, _ = mp_pca_denoising(data,None)
+    img, _ = mp_pca_denoising(data, None)
 
     show_denoised_output(data, img)
 
@@ -302,7 +301,6 @@ def local_pca_denoising(image, gtab, params, check_params=True):
         selection = {key: value[0] for key, value in parameters_lpca.items()}
     else:
         selection = params
-
 
     sigma = pca_noise_estimate(
         image,
