@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np  # array and matrix library
 from nibabel.testing import data_path
 
-from src.io.nfti_loader import load_nifti
+from src.io.nifti_io import load_nifti
 from src.utils.utils import start_register_plot, end_register_plot, update_multires_iterations, plot_register_values
 
 
@@ -19,7 +19,6 @@ def registration(data, affine, header):
     direction = affine[:3, :3].flatten()
 
     fixed_image = sitk.GetImageFromArray(fixed_data)
-
 
     fixed_image.SetOrigin(origin)
     fixed_image.SetSpacing(spacing)
@@ -139,7 +138,6 @@ def registration_mi(fixed_image, moving_image, transform,
                                                            update_multires_iterations)
         registration_method.AddCommand(sitk.sitkIterationEvent,
                                        lambda: plot_register_values(registration_method))
-
 
     valor_inicial = registration_method.MetricEvaluate(fixed_image, moving_image)
 
