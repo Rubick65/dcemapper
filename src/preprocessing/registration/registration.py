@@ -140,7 +140,17 @@ def registration_mi(fixed_image, moving_image, transform,
         registration_method.AddCommand(sitk.sitkIterationEvent,
                                        lambda: plot_register_values(registration_method))
 
+
+    valor_inicial = registration_method.MetricEvaluate(fixed_image, moving_image)
+
+    print(valor_inicial)
     transform_estimated = registration_method.Execute(fixed_image, moving_image)
+
+    valor_final = registration_method.GetMetricValue()
+    print(f"Métrica final: {valor_final}")
+
+    if valor_final > valor_inicial:
+        print("¡Cuidado! El algoritmo ha empeorado la métrica. Es mejor no aplicar cambios.")
 
     # Print the information about the optimization in the registration
     if verbose:
