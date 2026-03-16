@@ -2,6 +2,7 @@ import nibabel as nib
 import numpy as np
 from src.utils.utils import is_valid_nifti
 
+
 def load_nifti(path: str):
     is_valid_nifti(path)
 
@@ -11,7 +12,7 @@ def load_nifti(path: str):
     # Get´s image nifti data in numpy array
     data = img.get_fdata()
 
-    return data, img.affine
+    return data, img.affine, img.header
 
 
 def get_nifti_slices(data):

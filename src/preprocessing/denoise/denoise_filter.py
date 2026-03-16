@@ -17,9 +17,9 @@ from src.visualization.filter_visualization import ask_user_parameters
 
 def denoise():
     example_file = os.path.join(data_path, 'example4d.nii.gz')
-    data, affine = load_nifti(example_file)
+    data, affine, _ = load_nifti(example_file)
 
-    img, _ = ascm_denoising(data, None)
+    img, _ = non_local_means_denoising(data, None)
 
     show_denoised_output(data, img)
 
