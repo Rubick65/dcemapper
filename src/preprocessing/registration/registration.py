@@ -1,45 +1,49 @@
-import SimpleITK as sitk  # simpleitk library
-import sys  # sys library, used to include local py files
-import numpy as np  # array and matrix library
-import matplotlib.pyplot as plt
 import os
+
+import SimpleITK as sitk  # simpleitk library
+import matplotlib.pyplot as plt
+import numpy as np  # array and matrix library
 from nibabel.testing import data_path
 
-import main
-from src.utils.utils import start_register_plot, end_register_plot, update_multires_iterations, plot_register_values
 from src.io.nfti_loader import load_nifti
+from src.utils.utils import start_register_plot, end_register_plot, update_multires_iterations, plot_register_values
 
 
 def registration(data, affine, header):
     show_info(data)
     final_data = []
-    fixed = data[:, :, :, 0].T
-    fixed_image = sitk.GetImageFromArray(fixed)
-    t_index = data.shape[3]
-    spacing, origin, direction = get_sitk_metadata_from_nibabel(affine, header)
+    fixed_data = data[:, :, :, 0].T
 
-    fixed_image.SetSpacing(spacing)
+    origin = [float(o) for o in affine[:3, 3]]
+    spacing = [float(s) for s in header.get_zooms()[:3]]
+    direction = affine[:3, :3].flatten()
+
+    fixed_image = sitk.GetImageFromArray(fixed_data)
+
+
     fixed_image.SetOrigin(origin)
+    fixed_image.SetSpacing(spacing)
     fixed_image.SetDirection(direction)
+
+    t_index = data.shape[3]
 
     final_data.append(sitk.GetArrayFromImage(fixed_image))
     for index in range(1, t_index):
         moving = data[:, :, :, index].T
         moving_image = sitk.GetImageFromArray(moving)
 
-        moving_image.SetSpacing(spacing)
         moving_image.SetOrigin(origin)
         moving_image.SetDirection(direction)
+        moving_image.SetSpacing(spacing)
 
         initial_transform = sitk.CenteredTransformInitializer(
             fixed_image,
             moving_image,
             sitk.Euler3DTransform(),
-            sitk.CenteredTransformInitializerFilter.GEOMETRY
+            sitk.CenteredTransformInitializerFilter.MOMENTS
         )
 
-        final_transform = registration_mi(fixed_image, moving_image, initial_transform, num_iterations=500,
-                                          learning_rate=0.05, sampling=0.15)
+        final_transform = registration_mi(fixed_image, moving_image, initial_transform, num_iterations=1000)
         params = final_transform.GetParameters()
         print(f"Vol {index} -> Traslación: {params[3:]}")
         final_resampled = sitk.Resample(moving_image, fixed_image, final_transform,
@@ -50,60 +54,51 @@ def registration(data, affine, header):
     final_data_transform = np.stack(final_data)
 
     show_info(final_data_transform, True)
+    for s in range(final_data_transform.shape[1]):
+        check_overlay(final_data_transform, slice_idx=s)
 
-    check_overlay(data, final_data_transform)
 
+def check_overlay(registered_data, slice_idx=None):
+    """
+    Compara el volumen inicial con el final.
+    Si slice_idx es None, usa el corte central por defecto.
+    """
+    # If slice index is none
+    if slice_idx is None:
+        slice_idx = registered_data.shape[1] // 2
 
-def check_overlay(original_data, registered_data):
-    # Seleccionamos el mismo corte en ambas
-    # Nota: asumo que registered_data está en (T, Z, Y, X)
-    t_idx = -1  # Comparamos con el último volumen del tiempo (donde suele haber más movimiento acumulado)
-    slice_idx = registered_data.shape[1] // 2
+    # Check that the index exists
+    if slice_idx >= registered_data.shape[1]:
+        return
 
-    # Extraer los cortes
-    fixed = registered_data[0, slice_idx, :, :]  # Referencia (T=0)
-    moving = registered_data[t_idx, slice_idx, :, :]  # Registrada (T=final)
+    t_idx = -1
+    fixed_slice = registered_data[0, slice_idx, :, :]
+    moving_slice = registered_data[t_idx, slice_idx, :, :]
 
-    plt.figure(figsize=(10, 5))
+    plt.figure(figsize=(12, 5))
 
-    # 1. Mostrar diferencia absoluta (donde hay blanco, hay error de alineación o realce)
+    # 1. Diferencia Absoluta
     plt.subplot(1, 2, 1)
-    diff = np.abs(fixed.astype(float) - moving.astype(float))
+    diff = np.abs(fixed_slice.astype(float) - moving_slice.astype(float))
     plt.imshow(diff, cmap='hot')
-    plt.title("Diferencia Absoluta\n(Bordes brillantes = Desalineación)")
+    plt.title(f"Diferencia Absoluta (Slice {slice_idx})\nBordes blancos = Desalineación")
     plt.colorbar()
 
-    # 2. Superposición con Transparencia (Alpha Blend)
+    # 2. Superposición (Overlay)
     plt.subplot(1, 2, 2)
-    plt.imshow(fixed, cmap='gray')  # La fija de fondo en gris
-    plt.imshow(moving, cmap='jet', alpha=0.3)  # La registrada encima en color y 30% opaca
-    plt.title("Superposición (Overlay)\nFija (Gris) + Registrada (Color)")
+    plt.imshow(fixed_slice, cmap='gray')
+    plt.imshow(moving_slice, cmap='jet', alpha=0.3)
+    plt.title(f"Overlay (Slice {slice_idx})\nGris: Fijo | Color: Registrado")
 
     plt.tight_layout()
     plt.show()
 
 
-def get_sitk_metadata_from_nibabel(affine, header):
-    zooms = header.get_zooms()
-
-    spacing = np.array(zooms[:3])
-
-    print(spacing.shape)
-
-    origin = affine[:3, 3].tolist()
-
-    direction_matrix = affine[:3, :3] / spacing
-
-    direction = direction_matrix.flatten().tolist()
-
-    return spacing.tolist(), origin, direction
-
-
 def registration_mi(fixed_image, moving_image, transform,
                     interpolator=sitk.sitkLinear,
-                    bins=50, sampling=0.02,
+                    bins=60, sampling=0.10,
                     num_iterations=50, learning_rate=1.5,
-                    multiresolution=True, verbose=True, plot=True):
+                    multiresolution=True, verbose=True, plot=False):
     '''
     Image regristration with metric mutual information (mi)
     Input:
@@ -127,7 +122,7 @@ def registration_mi(fixed_image, moving_image, transform,
     # Set optimizer as gradient descent
     registration_method.SetOptimizerAsGradientDescent(learningRate=learning_rate,
                                                       numberOfIterations=num_iterations, convergenceMinimumValue=1e-6,
-                                                      convergenceWindowSize=10)
+                                                      convergenceWindowSize=30)
     registration_method.SetOptimizerScalesFromPhysicalShift()  # Set appropiate scales
 
     # Setup for the multi-resolution framework.
@@ -166,7 +161,7 @@ def show_info(data, is_processed=False):
         # data es (T, Z, Y, X)
         t_idx = 0
         slice_idx = data.shape[1] // 2
-        img = data[t_idx, slice_idx, :, :]  # Ya está en orientación correcta para imshow
+        img = data[t_idx, slice_idx, :, :]
     else:
         # data es (X, Y, Z, T) de nibabel
         t_idx = 0

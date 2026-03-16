@@ -1,6 +1,6 @@
 import os
+
 import matplotlib.pyplot as plt
-from ipywidgets import interact, fixed # jupyter widgets libraries
 from IPython.display import clear_output
 
 
@@ -54,3 +54,4 @@ def plot_register_values(registration_method):
 def update_multires_iterations():
     global metric_values, multires_iterations
     multires_iterations.append(len(metric_values))
+
