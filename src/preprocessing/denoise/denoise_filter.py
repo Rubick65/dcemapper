@@ -3,10 +3,11 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 from dipy.denoise.adaptive_soft_matching import adaptive_soft_matching
-from dipy.denoise.localpca import mppca
+from dipy.denoise.localpca import mppca, localpca
 from dipy.denoise.nlmeans import nlmeans
 from dipy.denoise.noise_estimate import estimate_sigma
 from dipy.denoise.patch2self import patch2self
+from dipy.denoise.pca_noise_estimate import pca_noise_estimate
 from nibabel.testing import data_path
 # TODO: if we remove one of the nlmeans maybe this to remove one dependency
 from skimage.restoration import denoise_nl_means

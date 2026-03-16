@@ -6,6 +6,7 @@ import nibabel as nib
 import numpy as np
 import SimpleITK as sitk
 
+
 # TODO: if we remove one of the nlmeans maybe this to remove one dependency
 
 def gibbs_suppress(nifti_file_path, unringed_nii_output_path=None, check_params=True):

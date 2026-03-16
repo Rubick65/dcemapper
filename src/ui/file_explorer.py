@@ -2,18 +2,24 @@ import sys
 from pathlib import Path
 
 from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtGui import QAction
+from PyQt6.QtGui import QAction, QActionGroup
 from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QListWidget, QGridLayout, QWidget, \
     QVBoxLayout, QMenuBar, QMenu
+
+from src.utils.misc import denoise_filters_dict
 
 
 class NonePersistentMenu(QMenu):
 
     def leaveEvent(self, a0):
-        # When the menu is not under mouse
-        if not self.underMouse():
-            # Menu is hidden
-            super().hide()
+        if self.underMouse():
+            return
+
+        active_action = self.activeAction()
+        if active_action and active_action.menu() and active_action.menu().isVisible():
+            return
+
+        super().hide()
 
 
 class PersistentMenu(NonePersistentMenu):
@@ -37,18 +43,79 @@ class PersistentMenu(NonePersistentMenu):
             super().mouseReleaseEvent(event)
 
 
+class PreprocessingMenu(PersistentMenu):
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.create_preprocessing_menu()
+
+    def create_preprocessing_menu(self):
+        """
+        Creates preprocessing menu section
+        :return: None
+        """
+
+        # Create preprocessing actions
+        preprocessing_actions = self.create_preprocessing_menus()
+
+        # Create preprocessing menu
+        self.setTitle("&Preprocessing")
+        # Tracks mouse
+        self.setMouseTracking(True)
+        # Adds actions to preprocessing menu
+        self.addActions(preprocessing_actions)
+
+    def create_preprocessing_menus(self) -> tuple:
+        """
+        Creates preprocessing actions
+        :returns a tuple with all the preprocessing actions
+        """
+        denoise_menu = DenoiseMenu(self)
+        self.addMenu(denoise_menu)
+
+        # Gibbs artifact suppression
+        gibbs_artifact_suppression = QAction("&Gibbs artifact suppression", self)
+        gibbs_artifact_suppression.setStatusTip("Gibbs artifact suppression")
+        gibbs_artifact_suppression.setCheckable(True)
+
+        # Bias field correction
+        bias_field_correction = QAction("&Bias field correction", self)
+        bias_field_correction.setStatusTip("Bias field correction")
+        bias_field_correction.setCheckable(True)
+
+        return gibbs_artifact_suppression, bias_field_correction
+
+
 class DenoiseMenu(PersistentMenu):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.denoising_filters = []
+        self.group = QActionGroup(self)
+        self.group.setExclusive(False)
+        self.initMenu()
 
     def initMenu(self):
         self.setTitle("&Denoising")
+        self.denoising_filter_actions()
+        self.group.triggered.connect(self.handle_exclusivity)
 
     def denoising_filter_actions(self):
-        non_local_filter = QAction("&Non local means denoising", self)
-        non_local_filter.setStatusTip("Non local denoising filter")
-        non_local_filter.setCheckable(True)
+        for action, status_tip in denoise_filters_dict.items():
+            denoising_filter = QAction(action, self)
+            denoising_filter.setStatusTip(status_tip)
+            denoising_filter.setCheckable(True)
+
+            self.group.addAction(denoising_filter)
+            self.addAction(denoising_filter)
+
+            self.denoising_filters.append(denoising_filter)
+
+    def handle_exclusivity(self, selected_action):
+        if selected_action.isChecked():
+            for action in self.group.actions():
+                if action is not selected_action:
+                    action.setChecked(False)
 
 
 class TopMenu(QMenuBar):
@@ -65,8 +132,10 @@ class TopMenu(QMenuBar):
         # File menu with all the options
         self.create_file_menu()
 
+        preprocessing_menu = PreprocessingMenu(self)
+
         # Preprocessing menu section
-        self.create_preprocessing_menu()
+        self.addMenu(preprocessing_menu)
 
     def create_file_menu(self):
         """
@@ -99,48 +168,6 @@ class TopMenu(QMenuBar):
 
         # Created action
         return open_file_action
-
-    def create_preprocessing_menu(self):
-        """
-        Creates preprocessing menu section
-        :return: None
-        """
-
-        # Create preprocessing actions
-        preprocessing_actions = self.create_preprocessing_actions()
-
-        # Create preprocessing menu
-        persistent_menu = PersistentMenu("&Preprocessing", self)
-        # Tracks mouse
-        persistent_menu.setMouseTracking(True)
-        # Adds actions to preprocessing menu
-        persistent_menu.addActions(preprocessing_actions)
-
-        # Adds preprocessing menu to main menu
-        self.addMenu(persistent_menu)
-
-    def create_preprocessing_actions(self) -> tuple:
-        """
-        Creates preprocessing actions
-        :returns a tuple with all the preprocessing actions
-        """
-
-        # Denoising
-        denoising_filter = QAction("&Denoising", self)
-        denoising_filter.setStatusTip("Denoising filter")
-        denoising_filter.setCheckable(True)
-
-        # Gibbs artifact suppression
-        gibbs_artifact_suppression = QAction("&Gibbs artifact suppression", self)
-        gibbs_artifact_suppression.setStatusTip("Gibbs artifact suppression")
-        gibbs_artifact_suppression.setCheckable(True)
-
-        # Bias field correction
-        bias_field_correction = QAction("&Bias field correction", self)
-        bias_field_correction.setStatusTip("Bias field correction")
-        bias_field_correction.setCheckable(True)
-
-        return denoising_filter, gibbs_artifact_suppression, bias_field_correction
 
     def open_file_triggered(self):
         """
