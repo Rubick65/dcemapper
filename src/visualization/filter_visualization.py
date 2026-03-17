@@ -4,7 +4,6 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QDialog, QApplication, QDialogButtonBox, QVBoxLayout, QLabel, \
     QLineEdit
 
-
 class ClickLabel(QLineEdit):
     clicked = pyqtSignal()
 
