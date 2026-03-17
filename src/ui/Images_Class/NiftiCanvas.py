@@ -1,15 +1,14 @@
-import sys
-
 import matplotlib.pyplot as plt
-import numpy as np
-from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget
-from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from PyQt6.QtCore import pyqtSignal, Qt
 from matplotlib import colormaps
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 
-class NiftyCanvas(FigureCanvas):
+
+class NiftiCanvas(FigureCanvas):
     """
     Class to create a matpplotlib figure in a PyQT6 interface
     """
+    z_changed = pyqtSignal(int)
     def __init__(self, np_array):
         self.fig, self.axes = plt.subplots()
         self.axes.axis('off') #Remove the axis numbers
@@ -20,10 +19,30 @@ class NiftyCanvas(FigureCanvas):
         self.current_z = 0 #Current slide
         self.current_t = 0 #Current time
 
+        self.slice_text = self.fig.text(0.5, 1.25,
+                                        f"Slice: {self.current_z}",
+                                         transform=self.axes.transAxes,
+                                         color='white',
+                                         fontsize=15,
+                                         family = "Georgia",
+                                         ha='center',
+                                         va='top'
+                                         )
+
+        #self.cmap_text = self.fig.text(0.5, -0.25,
+        #                                f"Colormap: {self.cmap}",
+        #                                transform=self.axes.transAxes,
+        #                                color='white',
+        #                                fontsize=15,
+        #                                family = "Georgia",
+        #                                ha='center',
+        #                                va='bottom'
+        #                                )
+
         self.max_z = self.data.shape[2] - 1 #Max number of slides in np array
         self.max_t = self.data.shape[3] - 1 #Max number of seconds in np array
 
-        self.current_slice = self.data[:, :,self.current_z,self.current_t]
+        self.current_slice = self.data[:, :,self.current_z,self.current_t].T
 
         #Image of the np array
         self.img_slice = self.axes.imshow(self.current_slice, cmap = self.cmap)
@@ -31,38 +50,48 @@ class NiftyCanvas(FigureCanvas):
         #Event click in the matplotlib image
         self.mpl_connect('button_press_event', self._on_click)
 
+        #Change background color
+        self.fig.patch.set_facecolor('black')
+        self.fig.subplots_adjust(top=0.9, bottom=0.1)
+
         #parameter to save and external function
         self.pixel_callback = None
 
     #To change the current time and reload the image
     def set_t(self,t_index):
+        """
+        Function to change the current time (T) and reload the image
+        :param t_index: new time (T)
+        :return: Reload of the image with the new T
+        """
         if t_index < 0 or t_index > self.max_t:
             raise IndexError(f"Error: T={t_index} Out of range (0-{self.max_t})")
         self.current_t = t_index
         self.load_image()
 
-    #To change the current slice and reload the image
     def set_z(self,z_index):
+        """
+        Function to change the current z (Z) and reload the image
+        :param z_index: new z/slice (Z)
+        :return: Reload of the image with the new Z
+        """
         if z_index < 0 or z_index > self.max_z:
             raise IndexError(f"Error: Z={z_index} Out of range (0-{self.max_z})")
         self.current_z = z_index
         self.load_image()
+        self.z_changed.emit(self.current_z)
 
-    #To change the current cmap and reload the image
-    def set_cmap(self, cmap_name):
-        if cmap_name not in colormaps:
-            self.cmap = 'gray'
-        self.cmap = cmap_name
-        self.img_slice.set_cmap(cmap_name)
-
-    #The image with the current changes is loaded.
     def load_image(self):
-        self.current_slice = self.data[:, :, self.current_z, self.current_t] #We update de slice with the changes
+        """
+        Function to load/reload the image
+        """
+        self.current_slice = self.data[:, :, self.current_z, self.current_t].T #We update de slice with the changes
+        self.slice_text.set_text(f"Slice: {self.current_z}")
         self.img_slice.set_data(self.current_slice)
         self.draw()
 
     def _on_click(self, event):
-        #If the click are not in the image limits we ignored
+        #If the click are not in the image axes we ignored
         if event.inaxes != self.axes:
             return
 
@@ -86,25 +115,3 @@ class NiftyCanvas(FigureCanvas):
     #Allows to the main window to hear the clicks
     def set_pixel_observer(self, callback_func):
         self.pixel_callback = callback_func
-
-#Prueba para ver solo
-def mostrar_click (x,y,value):
-    print(f"X = {x}, Y = {y}, intensity = {value}")
-
-app = QApplication(sys.argv)
-
-data_prueba = np.random.rand(256, 256, 10, 5)
-
-ventana = QMainWindow()
-canvas = NiftyCanvas(data_prueba)
-canvas.set_pixel_observer(mostrar_click)
-
-layout = QVBoxLayout()
-layout.addWidget(canvas)
-
-widget_central = QWidget()
-widget_central.setLayout(layout)
-ventana.setCentralWidget(widget_central)
-
-ventana.show()
-sys.exit(app.exec())
