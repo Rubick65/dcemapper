@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QHBoxLayout, QVBoxLayout,
     QSizePolicy
 from nibabel.testing import data_path
 
-from src.io.nfti_loader import load_nifti, get_nifti_slices
+from src.io.nifti_io import load_nifti, get_nifti_slices
 from src.ui.Images_Class.ClickImage import ClickImage
 from src.ui.Images_Class.IntensityGraph import IntensityGraph
 from src.ui.Images_Class.NiftiCanvas import NiftiCanvas
