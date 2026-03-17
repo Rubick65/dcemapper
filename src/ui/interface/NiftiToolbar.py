@@ -1,0 +1,56 @@
+from PyQt6.QtCore import Qt
+from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
+
+from src.ui.Images_Class.NiftiCanvas import NiftiCanvas
+
+
+class NiftiToolbar(NavigationToolbar):
+    def __init__(self, canvas: NiftiCanvas, parent):
+        super().__init__(canvas, parent)
+        #We readjust the functions of the arrows to change between slices
+        self._actions['back'].triggered.disconnect()
+        self._actions['back'].triggered.connect(self.go_back)
+
+        self._actions['forward'].triggered.disconnect()
+        self._actions['forward'].triggered.connect(self.go_forward)
+
+        #Alert to identify if the current z has changed
+        self.canvas.z_changed.connect(self.set_history_buttons)
+
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+
+        self.set_history_buttons()
+
+    def set_history_buttons(self):
+        """
+        Check to enable or disable the buttons for moving between slices
+        """
+        #We check if the current slide is in the limits
+        can_backward = self.canvas.current_z > 0
+        can_forward = self.canvas.current_z < self.canvas.max_z
+
+        #Depending on the check the button will be enabled or not
+        if 'back' in self._actions:
+            self._actions['back'].setEnabled(can_backward)
+        if 'forward' in self._actions:
+            self._actions['forward'].setEnabled(can_forward)
+
+    def go_back(self):
+        new_z = max(0, self.canvas.current_z - 1)
+        self.canvas.set_z(new_z)
+        self.set_history_buttons()
+
+    def go_forward(self):
+        new_z = min(self.canvas.max_z, self.canvas.current_z + 1)
+        self.canvas.set_z(new_z)
+        self.set_history_buttons()
+
+    #def edit_parameters(self):
+    #    super().edit_parameters()
+    #    self.canvas.update_cmap_text(self.get_current_cmap_name())
+
+    #def get_current_cmap_name(self):
+    #    images = self.canvas.figure.gca().get_images()
+    #    if images:
+    #        return images[0].get_cmap().name
+    #    return "None"
