@@ -1,20 +1,19 @@
 import os
 
+import nibabel as nib
 import numpy as np
+from dipy.core.gradients import gradient_table
 from dipy.denoise.adaptive_soft_matching import adaptive_soft_matching
 from dipy.denoise.localpca import mppca, localpca
 from dipy.denoise.nlmeans import nlmeans
 from dipy.denoise.noise_estimate import estimate_sigma
 from dipy.denoise.patch2self import patch2self
 from dipy.denoise.pca_noise_estimate import pca_noise_estimate
-from nibabel.testing import data_path
-import nibabel as nib
-
 # TODO: if we remove one of the nlmeans maybe this to remove one dependency
 from skimage.restoration import denoise_nl_means
 
 from src.io.nifti_io import load_nifti
-from src.utils.utils import show_denoised_output, rename_associated_files
+from src.utils.utils import create_general_preprocess_output, rename_associated_files, info_and_ask_denoising_params
 from src.visualization.filter_visualization import ask_user_parameters
 
 
@@ -60,11 +59,12 @@ def denoise(
 
     while process_again:
         original_image, study_nii = load_nifti(nifti_file_path)
+        selected_filter = "d"
 
-        denoised_image, _ = non_local_means_2_denoising(original_image, None)
+        denoised_image, params = denoise_options(original_image, params, check_params, nifti_file_path, selected_filter)
 
         if check_params:
-            save, process_again = show_denoised_output(original_image, denoised_image)
+            process_again = create_general_preprocess_output(original_image, denoised_image, "Denoised")
         else:
             save = True
             process_again = False
@@ -88,28 +88,42 @@ def denoise(
             params = None
     return params, denoised_nii_output_path, selected_filter
 
-    # def denoise():
-    example_file = os.path.join(data_path, 'example4d.nii.gz')
-    data, affine, _ = load_nifti(example_file)
 
-    img, _ = non_local_means_2_denoising(data, None)
+def denoise_options(original_image, params, check_params, nifti_file_path, selected_filter):
+    match selected_filter:
+        case "n":
+            denoised_image, params = non_local_means_denoising(
+                original_image, params, check_params=check_params
+            )
+        case "d":
+            denoised_image, params = non_local_means_2_denoising(
+                original_image, params, check_params=check_params
+            )
+        case "a":
+            denoised_image, params = ascm_denoising(
+                original_image, params, check_params=check_params
+            )
+        case "p":
+            bval_fname = nifti_file_path.replace(".nii.gz", ".bval")
+            bvals = np.loadtxt(bval_fname)
+            denoised_image, params = patch2self_denoising(
+                original_image, bvals, params, check_params=check_params
+            )
+        case "l":
+            bval_fname = nifti_file_path.replace(".nii.gz", ".bval")
+            bvec_fname = nifti_file_path.replace(".nii.gz", ".bvec")
+            bvals = np.loadtxt(bval_fname)
+            bvecs = np.loadtxt(bvec_fname)
+            gtab = gradient_table(bvals, bvecs)
+            denoised_image, params = local_pca_denoising(
+                original_image, gtab, params, check_params=check_params
+            )
+        case "m":
+            denoised_image, params = mp_pca_denoising(
+                original_image, params, check_params=check_params
+            )
+    return denoised_image, params
 
-    show_denoised_output(data, img)
-
-
-def info_and_ask_denoising_params(filter_name, params):
-    """Print a message indicating the selected filter and ask the user to input the
-    neccesary parameters.
-
-    Args:
-        filter_name (str): Name of the selected filter.
-        params (dict): Dictionary containing the parameter names along with a list
-            that contains the predetermined value and a brief description
-
-    Returns:
-        dict: Dictionary containing the selected values for each parameter name.
-    """
-    return ask_user_parameters(params, filter_name)
 
 
 def non_local_means_denoising(image, params=None, check_params=True):

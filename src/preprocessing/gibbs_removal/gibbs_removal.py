@@ -1,9 +1,8 @@
-from pathlib import Path
-
 import nibabel as nib
 from dipy.denoise.gibbs import gibbs_removal
-from src.utils.utils import show_denoised_output, rename_associated_files
+
 from src.io.nifti_io import load_nifti
+from src.utils.utils import create_general_preprocess_output, rename_associated_files
 
 
 def gibbs_remove(processing_filenames_list):
@@ -28,9 +27,10 @@ def gibbs_suppress(nifti_file_path, unringed_nii_output_path=None, check_params=
     original_img, study_nii = load_nifti(nifti_file_path)
     unringed_img = gibbs_removal(original_img, inplace=False)
     if check_params:
-        keep_unringed, _ = show_denoised_output(
-            original_img, unringed_img, ask_user="Gibbs"
+        _ = create_general_preprocess_output(
+            original_img, unringed_img, "Gibbs Removal", retry=False
         )
+        keep_unringed = False
     else:
         keep_unringed = True
 

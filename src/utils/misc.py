@@ -1,5 +1,4 @@
 class Logger:
-
     preprocessing_actions_dict = {
         "Gibbs": "&Gibbs artifact suppression",
         "Bias": "&Bias field correction"
