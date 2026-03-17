@@ -1,21 +1,36 @@
+import nibabel as nib
 from dipy.denoise.gibbs import gibbs_removal
 
-import matplotlib
-import matplotlib.pyplot as plt
-import nibabel as nib
-import numpy as np
-import SimpleITK as sitk
+from src.io.nifti_io import load_nifti
+from src.utils.utils import create_general_preprocess_output, rename_associated_files
 
-# TODO: if we remove one of the nlmeans maybe this to remove one dependency
+
+def gibbs_remove(processing_filenames_list):
+    gibbs_corrected, corrected_filename = gibbs_suppress(
+        processing_filenames_list[0]
+    )
+    if gibbs_corrected:
+        if corrected_filename != processing_filenames_list[0]:
+            processing_filenames_list[0] = corrected_filename
+
+        for i, nifti_filename in enumerate(
+                processing_filenames_list[1:], start=1
+        ):
+            gibbs_corrected, corrected_filename = gibbs_suppress(
+                nifti_filename, check_params=False
+            )
+            if corrected_filename != nifti_filename:
+                processing_filenames_list[i] = corrected_filename
+
 
 def gibbs_suppress(nifti_file_path, unringed_nii_output_path=None, check_params=True):
-    study_nii = nib.load(nifti_file_path)
-    original_img = study_nii.get_fdata()
+    original_img, study_nii = load_nifti(nifti_file_path)
     unringed_img = gibbs_removal(original_img, inplace=False)
     if check_params:
-        keep_unringed, _ = show_denoised_output(
-            original_img, unringed_img, ask_user="Gibbs"
+        _ = create_general_preprocess_output(
+            original_img, unringed_img, "Gibbs Removal", retry=False
         )
+        keep_unringed = False
     else:
         keep_unringed = True
 
@@ -25,7 +40,7 @@ def gibbs_suppress(nifti_file_path, unringed_nii_output_path=None, check_params=
                 unringed_nii_output_path = nifti_file_path.replace(
                     ".nii.gz", "_preproc.nii.gz"
                 )
-                ut.rename_associated_files(unringed_nii_output_path)
+                rename_associated_files(unringed_nii_output_path)
             else:
                 unringed_nii_output_path = nifti_file_path
 
@@ -36,3 +51,12 @@ def gibbs_suppress(nifti_file_path, unringed_nii_output_path=None, check_params=
         unringed_nii_output_path = nifti_file_path
 
     return keep_unringed, unringed_nii_output_path
+
+
+def main():
+    example_file = [r"C:\Users\laboratorio\PycharmProjects\dcemapper\src\test_nifti.nii.gz"]
+    gibbs_remove(example_file)
+
+
+if __name__ == "__main__":
+    main()

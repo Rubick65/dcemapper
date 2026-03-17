@@ -5,6 +5,7 @@ from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QListWidget, QGridLayout, QWidget, \
     QVBoxLayout, QMenuBar, QMenu
+from src.preprocessing.gibbs_removal import gibbs_removal as gibbs
 
 
 class NonePersistentMenu(QMenu):
@@ -154,12 +155,12 @@ class TopMenu(QMenuBar):
         dialog.setOption(QFileDialog.Option.DontUseNativeDialog, True)
 
         # Indicates the original directory
-        dialog.setDirectory(r'C:\home')
+        dialog.setDirectory(r'C:\Users\laboratorio\PycharmProjects\dcemapper')
         # Only shows existing files
         dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)
 
         # Filter only for indicated files
-        dialog.setNameFilter("('.nii.gz', '.nii')")
+        # dialog.setNameFilter("('.nii.gz', '.nii')")
         # Detailed mode
         dialog.setViewMode(QFileDialog.ViewMode.Detail)
 
