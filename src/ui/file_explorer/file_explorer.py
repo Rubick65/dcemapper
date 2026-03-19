@@ -6,7 +6,7 @@ from PyQt6.QtGui import QAction, QActionGroup
 from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QListWidget, QGridLayout, QWidget, \
     QVBoxLayout, QMenuBar, QMenu
 
-from src.utils.misc import denoise_filters_dict
+from src.utils.misc import denoise_filters_dict, file_options_dict
 
 
 class NonePersistentMenu(QMenu):
@@ -118,64 +118,43 @@ class DenoiseMenu(PersistentMenu):
                     action.setChecked(False)
 
 
-class TopMenu(QMenuBar):
+class FileMenu(PersistentMenu):
     # Signal for the selected files
     file_signal = pyqtSignal(list)
 
-    visible = True
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.denoising_filters = []
+        self.group = QActionGroup(self)
+        self.group.setExclusive(False)
+        self.initMenu()
 
-    def __init__(self):
-        super().__init__()
-        self.create_top_menu()
+    def initMenu(self):
+        self.setTitle("&File")
+        self.file_actions()
+        self.group.triggered.connect(self.open_file_action)
 
-    def create_top_menu(self):
-        # File menu with all the options
-        self.create_file_menu()
+    def file_actions(self):
+        for action, status_tip in file_options_dict.items():
+            file_options = QAction(action, self)
+            file_options.setStatusTip(status_tip)
 
-        preprocessing_menu = PreprocessingMenu(self)
+            self.group.addAction(file_options)
+            self.addAction(file_options)
 
-        # Preprocessing menu section
-        self.addMenu(preprocessing_menu)
+            self.denoising_filters.append(file_options)
 
-    def create_file_menu(self):
-        """
-        Creates file menu section in the main menu
-        :return: None
-        """
-        # Create open file action
-        open_file_action = self.create_open_file_action()
+    def open_file_action(self, selected_action):
+        selected_action_text = selected_action.text().split(" ")[1][0:1].lower()
 
-        # Create file menu section
-        file_menu = PersistentMenu("&File", self)
-        # Adds open file option to file menu
-        file_menu.addAction(open_file_action)
+        self.different_file_options(selected_action_text)
 
-        # Adds file menu to main menu
-        self.addMenu(file_menu)
-
-    def create_open_file_action(self) -> QAction:
-        """
-        Creates open file action for the file menu
-        :return: Created open file action
-        """
-
-        # Opening file action
-        open_file_action = QAction("&Open File", self)
-        open_file_action.setStatusTip("Open file action")
-
-        # Open file explorer action
-        open_file_action.triggered.connect(self.open_file_triggered)
-
-        # Created action
-        return open_file_action
-
-    def open_file_triggered(self):
+    def file_selector(self):
         """
         Opens PyQt6 file explorer and emits a signal with the path
         to the selected files
         :return: Path or paths with the selected files
         """
-
         # Widget for file explorer
         dialog = QFileDialog(self)
         dialog.setOption(QFileDialog.Option.DontUseNativeDialog, True)
@@ -183,7 +162,7 @@ class TopMenu(QMenuBar):
         # Indicates the original directory
         dialog.setDirectory(r'C:\Users\laboratorio\PycharmProjects\dcemapper')
         # Only shows existing files
-        dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)
+        dialog.setFileMode(QFileDialog.FileMode.Directory)
 
         # Filter only for indicated files
         # dialog.setNameFilter("('.nii.gz', '.nii')")
@@ -198,6 +177,28 @@ class TopMenu(QMenuBar):
             if files:
                 # Emits a signal with the path to the files
                 self.file_signal.emit(files)
+
+    def different_file_options(self, selected_option):
+        match selected_option:
+            case "n":
+                self.file_selector()
+
+
+class TopMenu(QMenuBar):
+    visible = True
+
+    def __init__(self):
+        super().__init__()
+        self.file_menu = FileMenu(self)
+        self.preprocessing_menu = PreprocessingMenu(self)
+        self.create_top_menu()
+
+    def create_top_menu(self):
+        # File menu with all the options
+        self.addMenu(self.file_menu)
+
+        # Preprocessing menu section
+        self.addMenu(self.preprocessing_menu)
 
 
 class FileListWidget(QListWidget):
@@ -226,7 +227,7 @@ class MainWindow(QMainWindow):
         self.main_layout.addWidget(self.file_list)
 
         self.setMenuBar(self.top_menu)
-        self.top_menu.file_signal.connect(self.receive_file_list)
+        self.top_menu.file_menu.file_signal.connect(self.receive_file_list)
 
     def initUI(self):
         # Main window configuration
