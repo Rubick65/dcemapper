@@ -1,10 +1,15 @@
 import sys
 
+import numpy as np
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QDialog, QApplication, QDialogButtonBox, QVBoxLayout, QLabel, \
     QHBoxLayout
+from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
+from matplotlib.widgets import RectangleSelector
+
+from src.roi.roi_creation import create_rectangular_mask
 
 RETRY_CODE = 2
 
@@ -28,12 +33,16 @@ class PreprocessingCanvas(FigureCanvas):
 
 class PreprocessingVisual(QDialog):
 
-    def __init__(self, figure, retry=True, parent=None, question_label_text="Are you happy with the results?"):
+    def __init__(self, figure, data, retry=True, parent=None, question_label_text="Are you happy with the results?"):
         super().__init__(parent)
         self.question_label_text = question_label_text
         self.figure = figure
         self.toolbar = None
         self.retry = retry
+        self.RS = None
+        self.data = data
+        self.roi_coords = None  # Para guardar las coordenadas del ROI
+
         self.initUI()
 
     def initUI(self):
@@ -46,6 +55,7 @@ class PreprocessingVisual(QDialog):
         h_layout = QHBoxLayout()
 
         sc = PreprocessingCanvas(self.figure, self)
+
         self.toolbar = NavigationToolbar(sc, self)
 
         question_label = QLabel(self.question_label_text)
@@ -92,9 +102,9 @@ class PreprocessingVisual(QDialog):
             )
 
 
-def init_view(figure, retry):
+def init_view(figure, retry, data):
     app = QApplication.instance() or QApplication(sys.argv)
-    window = PreprocessingVisual(figure, retry)
+    window = PreprocessingVisual(figure, data, retry)
 
     response_code = window.exec()
 

@@ -125,7 +125,6 @@ def denoise_options(original_image, params, check_params, nifti_file_path, selec
     return denoised_image, params
 
 
-
 def non_local_means_denoising(image, params=None, check_params=True):
     """Apply non local means denoising to an image using specified parameters.
     This version uses the skimage library implementation of this filter.

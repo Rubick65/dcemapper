@@ -2,19 +2,21 @@ import os
 import sys
 
 import numpy as np
-from PyQt6.QtCore import Qt, QSize, QTimer
-from PyQt6.QtGui import QPixmap, QImage, QKeyEvent
+from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtGui import QPixmap, QImage
 from PyQt6.QtWidgets import QApplication, QMainWindow, QHBoxLayout, QVBoxLayout, QWidget, QScrollArea, QLabel, \
     QSizePolicy
+from matplotlib.widgets import RectangleSelector, EllipseSelector
 from nibabel.testing import data_path
 
 from src.io.nifti_io import load_nifti, get_nifti_slices
+from src.roi.roi_creation import create_rectangular_mask, create_elliptical_mask
 from src.ui.Images_Class.ClickImage import ClickImage
 from src.ui.Images_Class.IntensityGraph import IntensityGraph
 from src.ui.Images_Class.NiftiCanvas import NiftiCanvas
 from src.ui.interface.NiftiToolbar import NiftiToolbar
 
-#-----------------CONSTANTS-----------------
+# -----------------CONSTANTS-----------------
 window_minSize = QSize(1125, 500)
 
 image_selector_maxSize = QSize(90, 90)
@@ -28,9 +30,12 @@ graphic_scroll_minSize = QSize(350, 350)
 
 name_current_dir = os.path.dirname(os.path.abspath(__file__))
 
+
 class MainWindow(QMainWindow):
-    def __init__(self,nifty_path):
+    def __init__(self, nifty_path):
         super().__init__()
+        self.mask_history = []
+        self.current_mask_counter = -1
         self.setWindowTitle("dcemapper")
         self.setMinimumSize(window_minSize)
         self.resize(1200, 700)
@@ -40,6 +45,9 @@ class MainWindow(QMainWindow):
         self.toolbar = None
         self.click_pressed = False
         self.record_layout = None
+        self.current_roi = None
+        self.roi_selector_list = []
+        self.selected_roi = ""
 
         # Main container
         main_widget = QWidget()
@@ -47,19 +55,21 @@ class MainWindow(QMainWindow):
         # Fill all the window
         self.setCentralWidget(main_widget)
 
-        #Data of the nifti image
+        # Data of the nifti image
         self.data, _ = load_nifti(self.nifty_path)
+        self.original_data = self.data.copy()
 
-        #Horizontal layout of widget to position other widgets
+        # Horizontal layout of widget to position other widgets
         self.main_layout = QHBoxLayout(main_widget)
 
-        #Creation of the image selector container
-        self.left_container = self.image_selector_layout(get_nifti_slices(self.data))
+        self.nifti_slices = get_nifti_slices(self.data)
+        # Creation of the image selector container
+        self.left_container = self.image_selector_layout(self.nifti_slices)
 
-        #Creation of the main image container
+        # Creation of the main image container
         self.mid_container = self.main_image_layout(self.data)
 
-        #Creation of the graphic intensity container
+        # Creation of the graphic intensity container
         self.right_container = self.graphic_layout()
 
         self.main_layout.addWidget(self.left_container)
@@ -68,7 +78,7 @@ class MainWindow(QMainWindow):
 
         main_widget.setLayout(self.main_layout)
 
-        #We put the keyboard focus on the window
+        # We put the keyboard focus on the window
         self.setFocus()
 
     def clicked(self, event):
@@ -120,14 +130,15 @@ class MainWindow(QMainWindow):
         else:
             self.showFullScreen()
 
-    def add_to_record(self,x,y,z,intensitis_t):
-        intensity_increase = ((intensitis_t[-1] - intensitis_t[0]) / intensitis_t[0] * 100) if intensitis_t[0] != 0 else 0
+    def add_to_record(self, x, y, z, intensitis_t):
+        intensity_increase = ((intensitis_t[-1] - intensitis_t[0]) / intensitis_t[0] * 100) if intensitis_t[
+                                                                                                   0] != 0 else 0
         info = f"Click = {self.record_layout.count() + 1} | X = {x} | Y = {y} | Z = {z} | Intensity increase = {intensity_increase}"
         label = QLabel(info)
-        #We add the info in the top of the layout
+        # We add the info in the top of the layout
         self.record_layout.addWidget(label)
 
-    def create_graphic(self,x,y,value):
+    def create_graphic(self, x, y, value):
         """
         Upload of the graphic with the pixel data
         :param x: coorX of the pixel image
@@ -139,7 +150,7 @@ class MainWindow(QMainWindow):
         intensities_t = self.data[x, y, current_z, :]
         self.add_to_record(x, y, current_z, intensities_t)
 
-        #We upload the graphic with the new data
+        # We upload the graphic with the new data
         self.graphic.update_graph(intensities_t, x, y)
 
     def update_main_canvas_by_index(self, index_z):
@@ -148,7 +159,7 @@ class MainWindow(QMainWindow):
         :param index_z: Current Z index of the slice that we want.
         :return: NiftiCanvas with the current Z
         """
-        #If we found the old Canvas, we put the slice we want to see
+        # If we found the old Canvas, we put the slice we want to see
         if self.canvas:
             self.canvas.set_z(index_z)
 
@@ -158,14 +169,14 @@ class MainWindow(QMainWindow):
         :param img: numpy array of data image
         :return: normalize numpy array data
         """
-        #We normalize the image data to 0-255 range intensity
+        # We normalize the image data to 0-255 range intensity
         if np.max(img) - np.min(img) != 0:
             norm_img = (img - np.min(img)) / (np.max(img) - np.min(img)) * 255
         else:
-            #If the img has no contrast,return a black image
+            # If the img has no contrast,return a black image
             norm_img = np.zeros_like(img)
 
-        #Convert the data to unsigned 8-bit integer format for QImage compatibility
+        # Convert the data to unsigned 8-bit integer format for QImage compatibility
         norm_img = norm_img.astype(np.uint8)
 
         return norm_img
@@ -184,11 +195,11 @@ class MainWindow(QMainWindow):
         image_container = ClickImage(image_data, size)
 
         img = np.real(image_data)
-        #We remove dimensions if we need it
+        # We remove dimensions if we need it
         while img.ndim > 2:
             img = img[0]
 
-        #We normalize the img data
+        # We normalize the img data
         norm_img = self.normalize_img(img)
 
         height, width = norm_img.shape
@@ -198,7 +209,7 @@ class MainWindow(QMainWindow):
         pixmap = QPixmap.fromImage(q_img)
         image_container.setPixmap(pixmap)
 
-        #We prepare the text of each slice
+        # We prepare the text of each slice
         label_text = QLabel(f"Slice {index}")
         label_text.setStyleSheet("padding-top: 5px;")
         label_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -206,7 +217,7 @@ class MainWindow(QMainWindow):
         vbox.addWidget(image_container)
         vbox.addWidget(label_text)
 
-        #We add and event to each image to update the main image with this image z value
+        # We add and event to each image to update the main image with this image z value
         image_container.image_clicked.connect(lambda: self.update_main_canvas_by_index(index))
 
         return container_widget
@@ -222,7 +233,7 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout()
         layout.addWidget(self.graphic)
 
-        #line to separate the graphic and the record
+        # line to separate the graphic and the record
         line = QWidget()
         line.setFixedHeight(2)
         line.setStyleSheet("background-color: #444;")
@@ -241,10 +252,10 @@ class MainWindow(QMainWindow):
         layout.addWidget(scroll)
 
         main_container.setMinimumWidth(350)
-        #main_container.setWidgetResizable(True)
+        # main_container.setWidgetResizable(True)
         main_container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
-        #To prevent it from taking focus from the keyboard when it is clicked
+        # To prevent it from taking focus from the keyboard when it is clicked
         main_container.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         main_container.setLayout(layout)
         return main_container
@@ -256,15 +267,15 @@ class MainWindow(QMainWindow):
         :return: the layout with the main/FigureCanvas image inside
         """
         self.canvas = NiftiCanvas(data)
-        #No focus of the keyboard when pressed
+        # No focus of the keyboard when pressed
         self.canvas.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.canvas.mpl_connect('button_press_event', self.clicked)
         self.canvas.mpl_connect('button_release_event', self.no_clicked)
 
-        #When clicked, create the graphic
+        # When clicked, create the graphic
         self.canvas.set_pixel_observer(self.create_graphic)
 
-        #Toolbar with custom options
+        # Toolbar with custom options
         self.toolbar = NiftiToolbar(self.canvas, self)
 
         layout = QVBoxLayout()
@@ -276,7 +287,29 @@ class MainWindow(QMainWindow):
         container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         container.setLayout(layout)
 
+        self.toolbar.roi_menu.selected_text_signal.connect(self.change_roi_selector)
+        self.toolbar.previous_roi_signal.connect(self.go_to_previous_roi)
+
         return container
+
+    def go_to_previous_roi(self):
+        if not self.mask_history or self.current_mask_counter < 0:
+            self.data = self.original_data.copy()
+            self.current_mask_counter = -1
+            self.mask_history = []
+        else:
+            self.mask_history.pop()
+            self.current_mask_counter -= 1
+
+            if self.mask_history:
+                last_mask = self.mask_history[-1]
+                self.data = self.original_data * last_mask[:, :, np.newaxis, np.newaxis]
+            else:
+                self.data = self.original_data.copy()
+
+        roi_slices_t0 = [self.data[:, :, z, 0].T for z in range(self.data.shape[2])]
+
+        self.update_widgets(self.data, roi_slices_t0)
 
     def image_selector_layout(self, images_data):
         """
@@ -294,13 +327,13 @@ class MainWindow(QMainWindow):
             row_widget = QWidget()
             row_layout = QHBoxLayout(row_widget)
             row_layout.setContentsMargins(0, 0, 0, 0)
-            #We obtein the current images range
+            # We obtein the current images range
             row_images = images_data[i:i + amount_image_selector_in_row]
 
             # For each image in the next 3 it will be added to the row
             for j, current_image in enumerate(row_images):
-                #With the current index image in the row(0,1,2)
-                #We take out the actual slice (Z)
+                # With the current index image in the row(0,1,2)
+                # We take out the actual slice (Z)
                 global_index = i + j
                 image = self.selector_image_creation(current_image, image_selector_maxSize, global_index)
                 row_layout.addWidget(image)
@@ -320,16 +353,107 @@ class MainWindow(QMainWindow):
         scroll = QScrollArea()
         scroll.setFixedWidth(280)
         scroll.setWidgetResizable(True)
-        #No focus of the keyboard when clicked
+        # No focus of the keyboard when clicked
         scroll.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         # deactivation of the horizontal bar
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll.setWidget(container)
         return scroll
 
+    def create_rectangle_selector(self):
+        ax = self.canvas.axes
+
+        self.current_roi = RectangleSelector(ax, self.on_rectangle_select,
+                                             useblit=False,
+                                             button=[1],
+                                             minspanx=5, minspany=5,
+                                             spancoords='data',
+                                             interactive=True)
+
+    def create_elliptical_selector(self):
+        ax = self.canvas.axes
+
+        self.current_roi = EllipseSelector(ax, self.on_ellipsis_select,
+                                           # 'line' para ver el borde
+                                           useblit=True,
+                                           button=[1],  # botón izquierdo del ratón
+                                           minspanx=5, minspany=5,
+                                           spancoords='pixels',
+                                           interactive=True)
+
+    def on_rectangle_select(self, eclick, erelease):
+        roi_coords = (eclick.xdata, eclick.ydata, erelease.xdata, erelease.ydata)
+        current_slice = self.get_current_slice()
+        mask = create_rectangular_mask(roi_coords, current_slice)
+        self.update_mask_history(mask)
+        self.update_canvas_with_roi(mask)
+
+    def update_mask_history(self, mask):
+        self.mask_history.append(mask)
+        self.current_mask_counter += 1
+
+    def on_ellipsis_select(self, eclick, erelease):
+        x1, y1 = eclick.xdata, eclick.ydata
+        x2, y2 = erelease.xdata, erelease.ydata
+        xc = (x1 + x2) / 2
+        yc = (y1 + y2) / 2
+        a = abs(x2 - x1) / 2
+        b = abs(y2 - y1) / 2
+
+        roi_coords = (x1, y1, x2, y2)
+        ellipsis_center = (xc, yc)
+        radius = (a, b)
+
+        current_slice = self.get_current_slice()
+        mask = create_elliptical_mask(roi_coords, ellipsis_center, radius, current_slice)
+        self.update_mask_history(mask)
+        self.update_canvas_with_roi(mask)
+
+    def get_current_slice(self):
+        return self.data[:, :, self.canvas.current_z, 0]
+
+    def update_canvas_with_roi(self, mask):
+
+        roi4d_array = self.data * mask[:, :, np.newaxis, np.newaxis]
+        roi_slices_t0 = [roi4d_array[:, :, z, 0].T for z in range(roi4d_array.shape[2])]
+
+        self.data = roi4d_array
+
+        self.update_widgets(roi4d_array, roi_slices_t0)
+
+    def update_widgets(self, roi4d_images, roi_slices_t0):
+        self.main_layout.removeWidget(self.left_container)
+        self.left_container.setParent(None)
+        self.left_container.deleteLater()
+        self.left_container = self.image_selector_layout(np.array(roi_slices_t0))
+
+        self.main_layout.insertWidget(0, self.left_container)
+
+        current_index = self.canvas.current_z
+
+        self.main_layout.removeWidget(self.mid_container)
+        self.mid_container.setParent(None)
+        self.mid_container.deleteLater()
+        self.mid_container = self.main_image_layout(roi4d_images)
+        self.main_layout.insertWidget(1, self.mid_container)
+        self.change_roi_selector(self.selected_roi)
+        self.update_main_canvas_by_index(current_index)
+
+        self.canvas.draw()
+
+    def change_roi_selector(self, selected_roi):
+        self.selected_roi = selected_roi
+        match selected_roi:
+            case "r":
+                self.create_rectangle_selector()
+            case "e":
+                self.create_elliptical_selector()
+
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     example_file = os.path.join(data_path, 'example4d.nii.gz')
     window = MainWindow(example_file)
+
     window.show()
     sys.exit(app.exec())

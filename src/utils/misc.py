@@ -19,3 +19,8 @@ denoise_filters_dti = [
     "Local PCA denoising",
     "Marcenko-Pastur PCA"
 ]
+
+roi_actions_dict = {
+    "Rectangle": "ROI selection in form of rectangle",
+    "Elliptical": "ROI selection in form of an ellipsis",
+}

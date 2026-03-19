@@ -2,7 +2,6 @@ import numpy as np
 import SimpleITK as sitk  # simpleitk library
 from src.utils.utils import show_bias_field_correction_ask, rename_associated_files, info_and_ask_denoising_params
 
-
 def n4_bias_field_correct(
         nifti_file_path, corrected_nii_output_path=None, params=None, check_params=True
 ):

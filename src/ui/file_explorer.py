@@ -5,7 +5,6 @@ from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QAction, QActionGroup
 from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QListWidget, QGridLayout, QWidget, \
     QVBoxLayout, QMenuBar, QMenu
-from src.preprocessing.gibbs_removal import gibbs_removal as gibbs
 
 from src.utils.misc import denoise_filters_dict
 
