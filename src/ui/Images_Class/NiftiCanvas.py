@@ -114,6 +114,9 @@ class NiftiCanvas(FigureCanvas):
                 if self.pixel_callback:
                     self.pixel_callback(x, y, value)
 
+    def close_figure(self):
+        plt.close(self.fig)  # Esto libera la memoria de Matplotlib
+
     #Allows to the main window to hear the clicks
     def set_pixel_observer(self, callback_func):
         self.pixel_callback = callback_func

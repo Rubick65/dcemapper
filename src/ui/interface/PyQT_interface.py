@@ -34,6 +34,8 @@ name_current_dir = os.path.dirname(os.path.abspath(__file__))
 class MainWindow(QMainWindow):
     def __init__(self, nifty_path):
         super().__init__()
+        self.mask_history = []
+        self.current_mask_counter = -1
         self.setWindowTitle("dcemapper")
         self.setMinimumSize(window_minSize)
         self.resize(1200, 700)
@@ -55,7 +57,7 @@ class MainWindow(QMainWindow):
 
         # Data of the nifti image
         self.data, _ = load_nifti(self.nifty_path)
-        self.original_data = self.data
+        self.original_data = self.data.copy()
 
         # Horizontal layout of widget to position other widgets
         self.main_layout = QHBoxLayout(main_widget)
@@ -286,8 +288,28 @@ class MainWindow(QMainWindow):
         container.setLayout(layout)
 
         self.toolbar.roi_menu.selected_text_signal.connect(self.change_roi_selector)
+        self.toolbar.previous_roi_signal.connect(self.go_to_previous_roi)
 
         return container
+
+    def go_to_previous_roi(self):
+        if not self.mask_history or self.current_mask_counter < 0:
+            self.data = self.original_data.copy()
+            self.current_mask_counter = -1
+            self.mask_history = []
+        else:
+            self.mask_history.pop()
+            self.current_mask_counter -= 1
+
+            if self.mask_history:
+                last_mask = self.mask_history[-1]
+                self.data = self.original_data * last_mask[:, :, np.newaxis, np.newaxis]
+            else:
+                self.data = self.original_data.copy()
+
+        roi_slices_t0 = [self.data[:, :, z, 0].T for z in range(self.data.shape[2])]
+
+        self.update_widgets(self.data, roi_slices_t0)
 
     def image_selector_layout(self, images_data):
         """
@@ -363,7 +385,12 @@ class MainWindow(QMainWindow):
         roi_coords = (eclick.xdata, eclick.ydata, erelease.xdata, erelease.ydata)
         current_slice = self.get_current_slice()
         mask = create_rectangular_mask(roi_coords, current_slice)
+        self.update_mask_history(mask)
         self.update_canvas_with_roi(mask)
+
+    def update_mask_history(self, mask):
+        self.mask_history.append(mask)
+        self.current_mask_counter += 1
 
     def on_ellipsis_select(self, eclick, erelease):
         x1, y1 = eclick.xdata, eclick.ydata
@@ -379,6 +406,7 @@ class MainWindow(QMainWindow):
 
         current_slice = self.get_current_slice()
         mask = create_elliptical_mask(roi_coords, ellipsis_center, radius, current_slice)
+        self.update_mask_history(mask)
         self.update_canvas_with_roi(mask)
 
     def get_current_slice(self):
@@ -390,6 +418,7 @@ class MainWindow(QMainWindow):
         roi_slices_t0 = [roi4d_array[:, :, z, 0].T for z in range(roi4d_array.shape[2])]
 
         self.data = roi4d_array
+
         self.update_widgets(roi4d_array, roi_slices_t0)
 
     def update_widgets(self, roi4d_images, roi_slices_t0):
@@ -400,12 +429,15 @@ class MainWindow(QMainWindow):
 
         self.main_layout.insertWidget(0, self.left_container)
 
+        current_index = self.canvas.current_z
+
         self.main_layout.removeWidget(self.mid_container)
         self.mid_container.setParent(None)
         self.mid_container.deleteLater()
         self.mid_container = self.main_image_layout(roi4d_images)
         self.main_layout.insertWidget(1, self.mid_container)
         self.change_roi_selector(self.selected_roi)
+        self.update_main_canvas_by_index(current_index)
 
         self.canvas.draw()
 

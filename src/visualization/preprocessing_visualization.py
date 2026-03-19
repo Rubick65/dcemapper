@@ -74,14 +74,6 @@ class PreprocessingVisual(QDialog):
 
         self.setLayout(v_layout)
 
-        ax = self.figure.gca()
-        self.RS = RectangleSelector(ax, self.on_select,
-                                    useblit=False,
-                                    button=[1],
-                                    minspanx=5, minspany=5,
-                                    spancoords='data',
-                                    interactive=True)
-
     def create_buttonBox(self):
 
         QBtn = self.create_buttons()
@@ -94,7 +86,7 @@ class PreprocessingVisual(QDialog):
         else:
             button_box = QDialogButtonBox(QBtn)
 
-        button_box.accepted.connect(self.create_roi)
+        button_box.accepted.connect(self.accept)
         button_box.rejected.connect(self.reject)
 
         return button_box
@@ -108,36 +100,6 @@ class PreprocessingVisual(QDialog):
             return (
                 QDialogButtonBox.StandardButton.Ok
             )
-
-    def on_select(self, eclick, erelease):
-        self.roi_coords = (eclick.xdata, eclick.ydata, erelease.xdata, erelease.ydata)
-        print(f"ROI seleccionado: {self.roi_coords}")
-
-    def create_roi(self):
-        if self.roi_coords is None:
-            print("No se seleccionó ningún ROI")
-            return
-
-        # Convertir a enteros y asegurarse de que estén en orden correcto
-
-        mask = create_rectangular_mask(self.roi_coords, self.data)
-        self.update_canvas_with_roi(mask, self.data)
-        # self.accept()
-
-    def update_canvas_with_roi(self, mask, data_slice):
-        # Aplicamos la máscara
-        roi_result = data_slice * mask.astype(float)
-        # En lugar de plt.show(), usamos la figura que ya tenemos en el diálogo
-        ax = self.figure.gca()
-        ax.clear()  # Limpiamos la imagen original
-
-        # Dibujamos el ROI
-        ax.imshow(roi_result, cmap='gray', origin='upper')
-        ax.set_title("ROI Seleccionado (Previsualización)")
-        ax.axis('off')
-
-        self.figure.canvas.draw()
-        print("Canvas actualizado con éxito.")
 
 
 def init_view(figure, retry, data):

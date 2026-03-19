@@ -20,7 +20,6 @@ class RoiMenu(QMenu):
     def initUI(self):
         self.roi_selection_actions()
 
-
     def roi_selection_actions(self):
         for roi, tip in roi_actions_dict.items():
             denoising_filter = QAction(roi, self)
@@ -42,6 +41,8 @@ class RoiMenu(QMenu):
 
 
 class NiftiToolbar(NavigationToolbar):
+    previous_roi_signal = pyqtSignal()
+
     def __init__(self, canvas: NiftiCanvas, parent):
         super().__init__(canvas, parent)
         # We readjust the functions of the arrows to change between slices
@@ -56,9 +57,12 @@ class NiftiToolbar(NavigationToolbar):
 
         self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
+        self.add_previous_roi_action()
+
         self.roi_menu = RoiMenu()
         self.roi_button = QToolButton(self)
         self.add_roi_menu()
+
 
         self.set_history_buttons()
 
@@ -87,16 +91,23 @@ class NiftiToolbar(NavigationToolbar):
         self.set_history_buttons()
 
     def add_roi_menu(self):
-        # 2. Crear un QToolButton para albergar el menú
         self.roi_button.setMenu(self.roi_menu)
         self.roi_button.setStyleSheet("QToolButton::menu-indicator { image: none; }")
         self.roi_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
 
-        # self.roi_button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         icon = self.style().standardIcon(QStyle.StandardPixmap.SP_ArrowDown)
         self.roi_button.setIcon(icon)
 
         self.addWidget(self.roi_button)
+
+    def add_previous_roi_action(self):
+        icon = self.style().standardIcon(QStyle.StandardPixmap.SP_ArrowLeft)
+
+        previous_roi_action = QAction(icon, "Previous ROI", self)
+
+        previous_roi_action.triggered.connect(self.previous_roi_signal.emit)
+
+        self.addAction(previous_roi_action)
 
     # def edit_parameters(self):
     #    super().edit_parameters()
