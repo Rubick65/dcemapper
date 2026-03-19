@@ -14,6 +14,7 @@ class NiftiCanvas(FigureCanvas):
         self.axes.axis('off') #Remove the axis numbers
         super().__init__(self.fig)
 
+
         self.data = np_array
         self.cmap = 'gray' #Color map, by default in black and white colors
         self.current_z = 0 #Current slide
@@ -41,6 +42,7 @@ class NiftiCanvas(FigureCanvas):
 
         self.max_z = self.data.shape[2] - 1 #Max number of slides in np array
         self.max_t = self.data.shape[3] - 1 #Max number of seconds in np array
+
 
         self.current_slice = self.data[:, :,self.current_z,self.current_t].T
 

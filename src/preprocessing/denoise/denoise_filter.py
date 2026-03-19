@@ -420,7 +420,7 @@ def patch2self_denoising(image, bvals, params, check_params=True):
 
 
 def main():
-    example_file = [r"C:\Users\laboratorio\PycharmProjects\dcemapper\src\test_nifti.nii.gz"]
+    example_file = [r"C:\Users\marti\Documents\Proyectos\Python\dcemapper\src\test_nifti.nii.gz"]
     output_file = r"C:\Users\laboratorio\PycharmProjects\dcemapper\src\viewer"
     empty_list = []
     denoise_init(example_file, output_file, empty_list)

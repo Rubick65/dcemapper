@@ -9,6 +9,8 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.widgets import RectangleSelector
 
+from src.roi.roi_creation import create_rectangular_mask
+
 RETRY_CODE = 2
 
 
@@ -116,35 +118,11 @@ class PreprocessingVisual(QDialog):
             print("No se seleccionó ningún ROI")
             return
 
-            # Convertir a enteros y asegurarse de que estén en orden correcto
-        x1, y1, x2, y2 = map(int, map(np.floor, self.roi_coords))
+        # Convertir a enteros y asegurarse de que estén en orden correcto
 
-        self.create_mask(x1, y1, x2, y2)
-        #self.accept()
-
-    def create_mask(self, x1, y1, x2, y2):
-        try:
-            # Seleccionamos el slice (ajusta el índice 2 si es necesario)
-            data_slice = self.data[:, :, 2, 0]
-            mask = np.zeros_like(data_slice, dtype=bool)
-
-            # IMPORTANTE: Mapeo de coordenadas
-            # x1, x2 del selector -> corresponden a la primera dimensión de data_slice
-            # y1, y2 del selector -> corresponden a la segunda dimensión de data_slice
-            ix1, ix2 = sorted([int(x1), int(x2)])
-            iy1, iy2 = sorted([int(y1), int(y2)])
-
-            # Clip para no salirnos del array
-            ix1, ix2 = np.clip([ix1, ix2], 0, data_slice.shape[0])
-            iy1, iy2 = np.clip([iy1, iy2], 0, data_slice.shape[1])
-
-            mask[ix1:ix2, iy1:iy2] = True
-
-            # Llamamos a la función que refresca el canvas
-            self.update_canvas_with_roi(mask, data_slice)
-
-        except Exception as e:
-            print(f"Error procesando el ROI: {e}")
+        mask = create_rectangular_mask(self.roi_coords, self.data)
+        self.update_canvas_with_roi(mask, self.data)
+        # self.accept()
 
     def update_canvas_with_roi(self, mask, data_slice):
         # Aplicamos la máscara
@@ -154,15 +132,12 @@ class PreprocessingVisual(QDialog):
         ax.clear()  # Limpiamos la imagen original
 
         # Dibujamos el ROI
-        ax.imshow(roi_result, cmap='turbo', origin='lower')
+        ax.imshow(roi_result, cmap='gray', origin='upper')
         ax.set_title("ROI Seleccionado (Previsualización)")
         ax.axis('off')
 
-        # ESTO es lo que actualiza la ventana de PyQt6 sin que explote
         self.figure.canvas.draw()
         print("Canvas actualizado con éxito.")
-
-
 
 
 def init_view(figure, retry, data):

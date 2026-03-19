@@ -1,23 +1,64 @@
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QAction, QActionGroup
+from PyQt6.QtWidgets import QStyle, QMenu, QToolButton
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
 
 from src.ui.Images_Class.NiftiCanvas import NiftiCanvas
+from src.utils.misc import roi_actions_dict
+
+
+class RoiMenu(QMenu):
+    selected_text_signal = pyqtSignal(str)
+
+    def __init__(self):
+        super().__init__()
+        self.group = QActionGroup(self)
+        self.group.setExclusive(False)
+        self.group.triggered.connect(self.handle_exclusivity)
+        self.initUI()
+
+    def initUI(self):
+        self.roi_selection_actions()
+
+
+    def roi_selection_actions(self):
+        for roi, tip in roi_actions_dict.items():
+            denoising_filter = QAction(roi, self)
+            denoising_filter.setStatusTip(tip)
+            denoising_filter.setCheckable(True)
+
+            self.group.addAction(denoising_filter)
+            self.addAction(denoising_filter)
+
+    def handle_exclusivity(self, selected_action: QAction):
+        if not selected_action.isChecked():
+            return
+
+        for action in self.group.actions():
+            if action is not selected_action:
+                action.setChecked(False)
+
+        self.selected_text_signal.emit(selected_action.text()[0: 1].lower())
 
 
 class NiftiToolbar(NavigationToolbar):
     def __init__(self, canvas: NiftiCanvas, parent):
         super().__init__(canvas, parent)
-        #We readjust the functions of the arrows to change between slices
+        # We readjust the functions of the arrows to change between slices
         self._actions['back'].triggered.disconnect()
         self._actions['back'].triggered.connect(self.go_back)
 
         self._actions['forward'].triggered.disconnect()
         self._actions['forward'].triggered.connect(self.go_forward)
 
-        #Alert to identify if the current z has changed
+        # Alert to identify if the current z has changed
         self.canvas.z_changed.connect(self.set_history_buttons)
 
         self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+
+        self.roi_menu = RoiMenu()
+        self.roi_button = QToolButton(self)
+        self.add_roi_menu()
 
         self.set_history_buttons()
 
@@ -25,11 +66,11 @@ class NiftiToolbar(NavigationToolbar):
         """
         Check to enable or disable the buttons for moving between slices
         """
-        #We check if the current slide is in the limits
+        # We check if the current slide is in the limits
         can_backward = self.canvas.current_z > 0
         can_forward = self.canvas.current_z < self.canvas.max_z
 
-        #Depending on the check the button will be enabled or not
+        # Depending on the check the button will be enabled or not
         if 'back' in self._actions:
             self._actions['back'].setEnabled(can_backward)
         if 'forward' in self._actions:
@@ -45,11 +86,23 @@ class NiftiToolbar(NavigationToolbar):
         self.canvas.set_z(new_z)
         self.set_history_buttons()
 
-    #def edit_parameters(self):
+    def add_roi_menu(self):
+        # 2. Crear un QToolButton para albergar el menú
+        self.roi_button.setMenu(self.roi_menu)
+        self.roi_button.setStyleSheet("QToolButton::menu-indicator { image: none; }")
+        self.roi_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+
+        # self.roi_button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        icon = self.style().standardIcon(QStyle.StandardPixmap.SP_ArrowDown)
+        self.roi_button.setIcon(icon)
+
+        self.addWidget(self.roi_button)
+
+    # def edit_parameters(self):
     #    super().edit_parameters()
     #    self.canvas.update_cmap_text(self.get_current_cmap_name())
 
-    #def get_current_cmap_name(self):
+    # def get_current_cmap_name(self):
     #    images = self.canvas.figure.gca().get_images()
     #    if images:
     #        return images[0].get_cmap().name

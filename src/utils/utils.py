@@ -1,6 +1,7 @@
 import os
 
 import matplotlib
+from matplotlib.widgets import _SelectorWidget
 
 from src.visualization.filter_visualization import ask_user_parameters
 
@@ -79,7 +80,7 @@ def info_and_ask_denoising_params(filter_name, params):
     return ask_user_parameters(params, filter_name)
 
 
-def create_general_preprocess_output(original_image, denoised_image, output_text, last_text="Residuals", retry = True ):
+def create_general_preprocess_output(original_image, denoised_image, output_text, last_text="Residuals", retry=True):
     """Display the denoised output and residuals of the denoising process.
 
     This method takes the original image and its denoised counterpart and displays
@@ -128,7 +129,6 @@ def create_general_preprocess_output(original_image, denoised_image, output_text
 
 
 def show_bias_field_correction_ask(original_image, corrected_image, log_bias_field):
-
     sli = original_image.shape[2] // 2
 
     if len(original_image.shape) == 3:
@@ -172,3 +172,12 @@ def rename_associated_files(nifti_filename):
                 shutil.copy(
                     associated_file,
                     nifti_filename.replace("nii.gz", associated_file.split(".")[-1]), )
+
+
+def activate_selector(selected_selector: _SelectorWidget):
+    selected_selector.set_active(True)
+    return selected_selector
+
+
+def deactivate_selector(selected_selector: _SelectorWidget):
+    selected_selector.set_active(False)
