@@ -4,7 +4,7 @@ import numpy as np
 from PyQt6 import sip
 from pathlib import Path
 from PyQt6.QtCore import Qt, QSize, QTimer
-from PyQt6.QtGui import QPixmap, QImage, QKeySequence, QShortcut, QIntValidator
+from PyQt6.QtGui import QPixmap, QImage, QKeySequence, QShortcut, QIntValidator, QIcon
 from PyQt6.QtWidgets import QApplication, QMainWindow, QHBoxLayout, QVBoxLayout, QWidget, QScrollArea, QLabel, QSizePolicy, QSlider, QLineEdit
 from matplotlib.widgets import RectangleSelector, EllipseSelector
 from src.io.nifti_io import load_nifti, get_nifti_slices
@@ -655,6 +655,8 @@ class MainWindow(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    logo_path = os.path.join(name_current_dir,"assets", "logo.png")
+    app.setWindowIcon(QIcon(logo_path))
     example_file = os.path.join("C://Users//hugdp//Desktop//Test_converters//archivos_raquel//prueba_output_hugo//sourcedata//sub-B060326_ses-WTF1_d10_DCE//perf//sub-B060326_ses-WTF1_d10_DCE_acq-10_run-1_dce.nii.gz")
     window = MainWindow(example_file)
 
