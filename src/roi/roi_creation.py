@@ -40,3 +40,8 @@ def update_elliptical_mask_subtractive(full_mask, ellipsis_center, radius, z_ind
     except Exception as e:
         print(f"Error en máscara elíptica: {e}")
         return full_mask
+
+def restar_mask(full_mask, z_index):
+    """Llena la capa con True para volver a empezar a recortar."""
+    full_mask[:, :, z_index] = True
+    return full_mask

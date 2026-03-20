@@ -9,10 +9,9 @@ denoise_filters_dict = {
 }
 
 file_options_dict = {
+    "&Open BIDS": "Opens BIDS structure and search for correct file",
     "&Open NIfTI File": "Opens NIfTI files",
     "&Open Bruker File": "Converts from Bruker to NIfTI format",
-    "&Open Dicom File": "Converts from Bruker to NIfTI format",
-    "&Open MRS File": "Converts from MRS format to NIfTI format",
 }
 denoise_filters = [
     "&Non local means skimage",
