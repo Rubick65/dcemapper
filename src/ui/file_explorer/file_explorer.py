@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QListWidget,
 
 from src.utils.misc import denoise_filters_dict, file_options_dict
 from src.utils.get_file_to_process import get_files_to_process
+from src.io.bruker_conversion import convert_studies_from_bruker
 
 
 class NonePersistentMenu(QMenu):
@@ -114,7 +115,7 @@ class DenoiseMenu(PersistentMenu):
 
 class FileMenu(PersistentMenu):
     # Signal for the selected files
-    file_signal = pyqtSignal(list)
+    file_signal = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -139,11 +140,11 @@ class FileMenu(PersistentMenu):
             self.denoising_filters.append(file_options)
 
     def open_file_action(self, selected_action):
-        selected_action_text = selected_action.text().split(" ")[1][0:1].lower()
+        selected_action_text = selected_action.text().split(" ")[1][0:2].lower()
 
         self.different_file_options(selected_action_text)
 
-    def file_selector(self):
+    def file_selector(self, directory=True):
         """
         Opens PyQt6 file explorer and emits a signal with the path
         to the selected files
@@ -154,9 +155,13 @@ class FileMenu(PersistentMenu):
         dialog.setOption(QFileDialog.Option.DontUseNativeDialog, True)
 
         # Indicates the original directory
-        dialog.setDirectory(r'C:\Users\laboratorio\PycharmProjects\dcemapper')
-        # Only shows existing files
-        dialog.setFileMode(QFileDialog.FileMode.Directory)
+        dialog.setDirectory(r'C:\Users\Documents')
+
+        if directory:
+            # Only shows existing files
+            dialog.setFileMode(QFileDialog.FileMode.Directory)
+        else:
+            dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
 
         # Filter only for indicated files
         # dialog.setNameFilter("('.nii.gz', '.nii')")
@@ -172,13 +177,35 @@ class FileMenu(PersistentMenu):
                 # Emits a signal with the path to the files
                 return files
                 self.file_signal.emit(files)
+        else:
+            raise ValueError()
 
     def different_file_options(self, selected_option):
-        files_to_process = {}
-        match selected_option:
-            case "n":
-                path = self.file_selector()
-                files_to_process = get_files_to_process(path)
+        f = ""
+        try:
+            match selected_option:
+                case "bi":
+                    path = self.file_selector()
+                    files_to_process = get_files_to_process(path[0])
+                    for file, archive in files_to_process.items():
+                        f = str(archive[0])
+                        break
+                case "ni":
+                    f = self.file_selector(directory=False)
+                    f = f[0]
+                case "br":
+                    path = self.file_selector()
+                    input_path = path[0]
+                    output_path = Path(input_path).parent
+                    convert_studies_from_bruker(input_path, output_path)
+                    files_to_process = get_files_to_process(output_path)
+                    for file, archive in files_to_process.items():
+                        f = str(archive[0])
+                        break
+        except ValueError:
+            pass
+
+        self.file_signal.emit(f)
 
 
 class TopMenu(QMenuBar):

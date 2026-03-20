@@ -5,7 +5,7 @@ import numpy as np
 import zipfile
 import warnings
 from pathlib import Path
-import bruker_data as bd
+from src.utils import bruker_data as bd
 
 warnings.filterwarnings("ignore")
 
@@ -173,8 +173,8 @@ def convert_studies_from_bruker(input_dir, output_dir, skip_existing=True):
         print(f"Error details save in: {log_file}")
 
 if __name__ == "__main__":
-    input_path = "C://Users//hugdp//Desktop//Test_converters//archivos_raquel//20260306_125921_B060326_WTF1_d10_DCE_1_1"
-    output_path = "C://Users//hugdp//Desktop//Test_converters//archivos_raquel//prueba_output_hugo"
+    input_path = r"C:\Users\marti\Documents\datos prueba\prueba_bruker\20260306_125921_B060326_WTF1_d10_DCE_1_1"
+    output_path = r"C:\Users\marti\Documents\datos prueba\prueba_bruker"
     skip_existing = True  # False if we want to overwrite
 
     print("-" * 50)
