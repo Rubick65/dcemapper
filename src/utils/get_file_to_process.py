@@ -22,6 +22,7 @@ def get_files_to_process(main_path):
             files_to_process[study_path.name] = list(set(acqs))
 
     if not derivatives_folder.exists():
+        derivatives_folder.mkdir()
         return files_to_process
 
     for derivative_folder in filter(is_folder_and_not_occult, derivatives_folder.iterdir()):
