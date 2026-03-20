@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 
-
 class IntensityGraph(FigureCanvas):
     def __init__(self,parent = None):
         self.fig, self.axes = plt.subplots()
@@ -11,6 +10,9 @@ class IntensityGraph(FigureCanvas):
         self.axes.set_ylabel("Intensity")
         self.line, = self.axes.plot([], [], marker='o', color='b', markersize=4)
         self.fig.tight_layout() #We prepare the graphic
+
+    def close_graph(self):
+        plt.close(self.fig)
 
     def update_graph(self, intensities_t, x, y):
         """

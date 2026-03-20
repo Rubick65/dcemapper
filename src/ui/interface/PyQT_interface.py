@@ -31,12 +31,14 @@ class MainWindow(QMainWindow):
     def __init__(self,nifty_path = None):
         super().__init__()
         self.mask_history = []
+        self.file_list = None
         self.current_mask_counter = -1
         self.setWindowTitle("dcemapper")
         self.setMinimumSize(window_minSize)
         self.resize(1200, 700)
         self.nifty_path = nifty_path
         self.movie_speed = 100  # miliseconds fps
+        self._shortcuts = []
         self.graphic = None
         self.canvas = None
         self.toolbar = None
@@ -47,6 +49,7 @@ class MainWindow(QMainWindow):
         self.click_pressed = False
         self.record_layout = None
         self.data= None
+        self.full_mask = None
         self.original_data = None
         self.movie_timer = QTimer()
         self.movie_timer.timeout.connect(self.next_movie_frame)
@@ -65,11 +68,6 @@ class MainWindow(QMainWindow):
         # Fill all the window
         self.setCentralWidget(main_widget)
 
-        # Data of the nifti image
-        self.data, _ = load_nifti(self.nifty_path)
-        self.original_data = self.data.copy()
-        self.full_mask = np.ones(self.data.shape[:3], dtype=bool)
-
         # Horizontal layout of widget to position other widgets
         #Horizontal layout of widget to position other widgets
         self.main_layout = QHBoxLayout(main_widget)
@@ -77,10 +75,10 @@ class MainWindow(QMainWindow):
         if self.nifty_path:
             #If we have data, we load it
             self.set_nifti(self.nifty_path)
+            self.setFocus()
+            self.init_shortcuts()
 
         main_widget.setLayout(self.main_layout)
-        self.setFocus()
-        self.init_shortcuts()
 
     def set_nifti(self, nifty_path):
         """
@@ -88,9 +86,26 @@ class MainWindow(QMainWindow):
         :param nifty_path: Nifti image path
         :return: Creation of the data interface
         """
+        self.movie_timer.stop()
+
+        if self.canvas:
+            self.canvas.close_figure()
+            self.canvas.deleteLater()
+            self.canvas = None
+
+        if self.graphic:
+            self.graphic.close_graph()
+            self.graphic.deleteLater()
+            self.graphic = None
+
+        self.mask_history = []
+        self.current_mask_counter = -1
+        self.current_roi = None
+
         self.nifty_path = nifty_path
         self.data, _ = load_nifti(self.nifty_path)
         self.original_data = self.data.copy()
+        self.full_mask = np.ones(self.data.shape[:3], dtype=bool)
 
         #We clean the layout
         self.clear_layout(self.main_layout)
@@ -104,14 +119,23 @@ class MainWindow(QMainWindow):
         self.main_layout.addWidget(self.mid_container)
         self.main_layout.addWidget(self.right_container)
 
+        self.setFocus()
+        self.init_shortcuts()
         self.update()
 
     def clear_layout(self, layout):
         #If layout is not empty we delete his childrens
-        while layout.count():
-            child = layout.takeAt(0)
-            if child.widget():
-                child.widget().deleteLater()
+        if layout is not None:
+            while layout.count():
+                item = layout.takeAt(0)
+                widget = item.widget()
+                if widget:
+                    widget.setParent(None)
+                    widget.deleteLater()
+                elif item.layout():
+                    self.clear_layout(item.layout())
+
+
 
     def clicked(self, event):
         if event.button == 1:
@@ -121,7 +145,14 @@ class MainWindow(QMainWindow):
         if event.button == 1:
             self.click_pressed = False
 
+    def cleanup_shortcuts(self):
+        for s in self._shortcuts:
+            s.setEnabled(False)
+            s.deleteLater()
+        self._shortcuts.clear()
+
     def init_shortcuts(self):
+        self.cleanup_shortcuts()
         shortcuts = {
             Qt.Key.Key_Left: self.toolbar.go_back,
             Qt.Key.Key_Right: self.toolbar.go_forward,
@@ -137,6 +168,7 @@ class MainWindow(QMainWindow):
         for key, callback in shortcuts.items():
             shortcut = QShortcut(QKeySequence(key), self)
             shortcut.activated.connect(callback)
+            self._shortcuts.append(shortcut)
 
     def handle_zoom_key(self):
         if self.toolbar and not self.toolbar.mode.name == 'PAN' and not self.click_pressed:
@@ -622,22 +654,21 @@ class MainWindow(QMainWindow):
         QTimer.singleShot(1, lambda: self.update_widgets(roi4d_array, roi_slices_t0))
 
     def update_widgets(self, roi4d_images, roi_slices_t0):
-        old_canvas = self.canvas
-
         if self.current_roi:
             self.current_roi.set_visible(False)
-            self.canvas.draw_idle()
+            if self.canvas:
+                self.canvas.draw_idle()
 
-        self.update_widgets(roi_slices_t0)
+        if self.left_container:
+            self.main_layout.removeWidget(self.left_container)
+            self.left_container.setParent(None)
+            self.left_container.deleteLater()
 
-    def update_widgets(self, roi_slices_t0):
-        self.main_layout.removeWidget(self.left_container)
-        self.left_container.setParent(None)
-        self.left_container.deleteLater()
         self.left_container = self.image_selector_layout(np.array(roi_slices_t0))
         self.main_layout.insertWidget(0, self.left_container)
 
-        self.canvas.update_image(self.data)
+        if self.canvas:
+            self.canvas.update_image(self.data)
 
     def change_roi_selector(self, selected_roi):
         self.selected_roi = selected_roi
@@ -656,7 +687,7 @@ class MainWindow(QMainWindow):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     example_file = os.path.join("C://Users//hugdp//Desktop//Test_converters//archivos_raquel//prueba_output_hugo//sourcedata//sub-B060326_ses-WTF1_d10_DCE//perf//sub-B060326_ses-WTF1_d10_DCE_acq-10_run-1_dce.nii.gz")
-    window = MainWindow(example_file)
+    window = MainWindow()
 
     window.show()
     sys.exit(app.exec())
