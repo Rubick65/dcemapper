@@ -1,14 +1,16 @@
 import os
 import sys
-import numpy as np
-from PyQt6 import sip
 from pathlib import Path
+
+import numpy as np
 from PyQt6.QtCore import Qt, QSize, QTimer
 from PyQt6.QtGui import QPixmap, QImage, QKeySequence, QShortcut, QIntValidator
-from PyQt6.QtWidgets import QApplication, QMainWindow, QHBoxLayout, QVBoxLayout, QWidget, QScrollArea, QLabel, QSizePolicy, QSlider, QLineEdit
+from PyQt6.QtWidgets import QApplication, QMainWindow, QHBoxLayout, QVBoxLayout, QWidget, QScrollArea, QLabel, \
+    QSizePolicy, QSlider, QLineEdit
 from matplotlib.widgets import RectangleSelector, EllipseSelector
+
 from src.io.nifti_io import load_nifti, get_nifti_slices
-from src.roi.roi_creation import create_rectangular_mask, update_elliptical_mask_subtractive
+from src.roi.roi_creation import create_rectangular_mask, update_elliptical_mask_subtractive, restar_mask
 from src.ui.Images_Class.ClickImage import ClickImage
 from src.ui.Images_Class.IntensityGraph import IntensityGraph
 from src.ui.Images_Class.NiftiCanvas import NiftiCanvas
@@ -27,8 +29,9 @@ main_image_minSize = QSize(400, 400)
 
 name_current_dir = os.path.dirname(os.path.abspath(__file__))
 
+
 class MainWindow(QMainWindow):
-    def __init__(self,nifty_path = None):
+    def __init__(self, nifty_path=None):
         super().__init__()
         self.mask_history = []
         self.file_list = None
@@ -48,7 +51,7 @@ class MainWindow(QMainWindow):
         self.slider_fps_input = None
         self.click_pressed = False
         self.record_layout = None
-        self.data= None
+        self.data = None
         self.full_mask = None
         self.original_data = None
         self.movie_timer = QTimer()
@@ -61,6 +64,9 @@ class MainWindow(QMainWindow):
         self.current_roi = None
         self.roi_selector_list = []
         self.selected_roi = ""
+        self.top_bar = TopMenu()
+        self.setMenuBar(self.top_bar)
+        self.top_bar.file_menu.file_signal.connect(self.set_nifti)
 
         # Main container
         main_widget = QWidget()
@@ -69,11 +75,11 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(main_widget)
 
         # Horizontal layout of widget to position other widgets
-        #Horizontal layout of widget to position other widgets
+        # Horizontal layout of widget to position other widgets
         self.main_layout = QHBoxLayout(main_widget)
 
         if self.nifty_path:
-            #If we have data, we load it
+            # If we have data, we load it
             self.set_nifti(self.nifty_path)
             self.setFocus()
             self.init_shortcuts()
@@ -86,6 +92,10 @@ class MainWindow(QMainWindow):
         :param nifty_path: Nifti image path
         :return: Creation of the data interface
         """
+
+        if nifty_path == "":
+            return
+
         self.movie_timer.stop()
 
         if self.canvas:
@@ -107,10 +117,10 @@ class MainWindow(QMainWindow):
         self.original_data = self.data.copy()
         self.full_mask = np.ones(self.data.shape[:3], dtype=bool)
 
-        #We clean the layout
+        # We clean the layout
         self.clear_layout(self.main_layout)
 
-        #Create all the containers
+        # Create all the containers
         self.left_container = self.image_selector_layout(get_nifti_slices(self.data))
         self.mid_container = self.main_image_layout(self.data)
         self.right_container = self.graphic_layout()
@@ -124,7 +134,7 @@ class MainWindow(QMainWindow):
         self.update()
 
     def clear_layout(self, layout):
-        #If layout is not empty we delete his childrens
+        # If layout is not empty we delete his childrens
         if layout is not None:
             while layout.count():
                 item = layout.takeAt(0)
@@ -134,8 +144,6 @@ class MainWindow(QMainWindow):
                     widget.deleteLater()
                 elif item.layout():
                     self.clear_layout(item.layout())
-
-
 
     def clicked(self, event):
         if event.button == 1:
@@ -163,7 +171,7 @@ class MainWindow(QMainWindow):
             Qt.Key.Key_Z: self.handle_zoom_key,
             Qt.Key.Key_M: self.handle_pan_key,
             Qt.Key.Key_F: self.toggle_fullscreen,
-            Qt.Key.Key_Backspace: self.go_to_previous_roi
+            "Ctrl+Z": self.go_to_previous_roi
         }
         for key, callback in shortcuts.items():
             shortcut = QShortcut(QKeySequence(key), self)
@@ -268,10 +276,10 @@ class MainWindow(QMainWindow):
         :param index_z: Current Z index of the slice that we want.
         :return: NiftiCanvas with the current Z
         """
-        #If we found the old Canvas, we put the slice we want to see
+        # If we found the old Canvas, we put the slice we want to see
         if self.canvas:
             self.canvas.set_z(index_z)
-            self.movie_timer.stop() #We stop if we are in movie mode
+            self.movie_timer.stop()  # We stop if we are in movie mode
 
     def normalize_img(self, img):
         """
@@ -327,7 +335,7 @@ class MainWindow(QMainWindow):
         vbox.addWidget(image_container)
         vbox.addWidget(label_text)
 
-        #We add and event to each image to update the main image with this image z value
+        # We add and event to each image to update the main image with this image z value
         image_container.image_clicked.connect(lambda: self.update_main_canvas_by_index_click(index))
 
         return container_widget
@@ -350,7 +358,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(line)
 
         scroll = QScrollArea()
-        #scroll.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        # scroll.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         scroll.setWidgetResizable(True)
 
         scroll_content = QWidget()
@@ -366,7 +374,7 @@ class MainWindow(QMainWindow):
         main_container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         # To prevent it from taking focus from the keyboard when it is clicked
-        #main_container.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        # main_container.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         main_container.setLayout(layout)
 
         main_container.setObjectName("graphic")
@@ -410,30 +418,19 @@ class MainWindow(QMainWindow):
         return container
 
     def go_to_previous_roi(self):
-        if not self.mask_history or self.current_mask_counter < 0 and self.data:
-            self.data = self.original_data.copy()
-            self.current_mask_counter = -1
-            self.mask_history = []
-        else:
-            self.mask_history.pop()
-            self.current_mask_counter -= 1
+        z_index = self.canvas.current_z
+        if False not in self.full_mask[:, :, z_index]:
+            return
 
-            if self.mask_history:
-                last_mask = self.mask_history[-1]
-                self.data = self.original_data * last_mask[:, :, np.newaxis, np.newaxis]
-            else:
-                self.data = self.original_data.copy()
-
-        roi_slices_t0 = [self.data[:, :, z, 0].T for z in range(self.data.shape[2])]
-
-        self.update_widgets(self.data, roi_slices_t0)
+        self.full_mask = restar_mask(self.full_mask, z_index)
+        self.update_canvas_with_roi()
 
     def update_time_from_slider(self, t_value):
         """
         Updates the current T point and refreshes the UI with the slider
         :param t_value: selected T index
         """
-        #We block the input signals to prevent a loop
+        # We block the input signals to prevent a loop
         self.slider_t_input.blockSignals(True)
         self.slider_t_input.setText(str(t_value))
         self.slider_t_input.blockSignals(False)
@@ -458,7 +455,7 @@ class MainWindow(QMainWindow):
         Updates the current fps point and refreshes the UI with the slider
         :param fps_value: selected fps index
         """
-        #We block the input signals to prevent a loop
+        # We block the input signals to prevent a loop
         self.slider_fps_input.blockSignals(True)
         self.slider_fps_input.setText(str(fps_value))
         self.slider_fps_input.blockSignals(False)
@@ -486,7 +483,8 @@ class MainWindow(QMainWindow):
         if self.movie_timer.isActive():
             self.movie_timer.stop()
 
-    def slider_label(self,label_text, min_range, max_range, init_val, slider_callback, text_callback,stop_movie = False):
+    def slider_label(self, label_text, min_range, max_range, init_val, slider_callback, text_callback,
+                     stop_movie=False):
         container_widget = QWidget()
         container_widget.setFixedWidth(selector_minWidth)
         layout = QVBoxLayout(container_widget)
@@ -537,7 +535,7 @@ class MainWindow(QMainWindow):
 
         slider_t_group, self.slider_t, self.slider_t_input = self.slider_label(
             "Time Point (T)", 0, num_t_points - 1, 0,
-            self.update_time_from_slider, self.update_time_from_text,True
+            self.update_time_from_slider, self.update_time_from_text, True
         )
 
         slider_fps_group, self.slider_fps, self.slider_fps_input = self.slider_label(
@@ -636,7 +634,7 @@ class MainWindow(QMainWindow):
         radius = (a, b)
 
         z_index = self.canvas.current_z
-        #full_mask, ellipsis_center, radius, z_index
+        # full_mask, ellipsis_center, radius, z_index
         self.full_mask = update_elliptical_mask_subtractive(self.full_mask, ellipsis_center, radius, z_index)
         # self.update_mask_history(mask)
         self.update_canvas_with_roi()
@@ -686,7 +684,6 @@ class MainWindow(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    example_file = os.path.join("C://Users//hugdp//Desktop//Test_converters//archivos_raquel//prueba_output_hugo//sourcedata//sub-B060326_ses-WTF1_d10_DCE//perf//sub-B060326_ses-WTF1_d10_DCE_acq-10_run-1_dce.nii.gz")
     window = MainWindow()
 
     window.show()
