@@ -20,7 +20,7 @@ class NiftiCanvas(FigureCanvas):
         self.current_z = 0 #Current slide
         self.current_t = 0 #Current time
 
-        self.slice_text = self.fig.text(0.5, 1.25,
+        self.slice_text = self.fig.text(0.5, 1,
                                         f"Slice: {self.current_z}",
                                          transform=self.axes.transAxes,
                                          color='white',
@@ -115,7 +115,7 @@ class NiftiCanvas(FigureCanvas):
                     self.pixel_callback(x, y, value)
 
     def close_figure(self):
-        plt.close(self.fig)  # Esto libera la memoria de Matplotlib
+        plt.close(self.fig)
 
     #Allows to the main window to hear the clicks
     def set_pixel_observer(self, callback_func):

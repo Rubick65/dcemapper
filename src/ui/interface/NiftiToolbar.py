@@ -52,6 +52,8 @@ class NiftiToolbar(NavigationToolbar):
         self._actions['forward'].triggered.disconnect()
         self._actions['forward'].triggered.connect(self.go_forward)
 
+        self.destroyed.connect(self._cleanup_canvas)
+
         # Alert to identify if the current z has changed
         self.canvas.z_changed.connect(self.set_history_buttons)
 
@@ -63,8 +65,11 @@ class NiftiToolbar(NavigationToolbar):
         self.roi_button = QToolButton(self)
         self.add_roi_menu()
 
-
         self.set_history_buttons()
+
+    def _cleanup_canvas(self):
+        if self.canvas:
+            self.canvas.close_figure()
 
     def set_history_buttons(self):
         """
