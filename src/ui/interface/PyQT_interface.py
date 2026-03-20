@@ -688,9 +688,8 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     logo_path = os.path.join(name_current_dir,"assets", "logo.png")
     app.setWindowIcon(QIcon(logo_path))
-    example_file = os.path.join("C://Users//hugdp//Desktop//Test_converters//archivos_raquel//prueba_output_hugo//sourcedata//sub-B060326_ses-WTF1_d10_DCE//perf//sub-B060326_ses-WTF1_d10_DCE_acq-10_run-1_dce.nii.gz")
-    window = MainWindow(example_file)
     window = MainWindow()
+
 
     window.show()
     sys.exit(app.exec())
