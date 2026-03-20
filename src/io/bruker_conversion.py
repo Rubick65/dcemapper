@@ -5,11 +5,9 @@ import numpy as np
 import zipfile
 import warnings
 from pathlib import Path
-from tqdm import tqdm
 import bruker_data as bd
 
 warnings.filterwarnings("ignore")
-
 
 def get_modality_bruker(params):
     for modality, conditions in bd.conditions_dict_bruker.items():
@@ -24,15 +22,13 @@ def save_as_nifti_and_json(pvdset, scan_id, reco_id, output_path, study_info, ex
     if isinstance(niiobj, list):
         ref_nii = niiobj[0]
         data_list = [nii.get_fdata() for nii in niiobj]
-
         data = np.stack(data_list, axis=-1)
 
         final_nii = nib.Nifti1Image(data, ref_nii.affine, header=ref_nii.header)
-
         final_nii.header.set_data_shape(data.shape)
         final_nii.header.set_xyzt_units(xyz='mm', t='sec')
-
         final_nii.to_filename(str(nii_file))
+
     else:
         niiobj.to_filename(str(nii_file))
 
@@ -57,12 +53,11 @@ def save_as_nifti_and_json(pvdset, scan_id, reco_id, output_path, study_info, ex
     with open(output_path.with_suffix(".json"), 'w') as f:
         json.dump(full_metadata, f, indent=4)
 
-
 def get_study_info(pvdset):
     pv = pvdset.pvobj
 
     def clean_id(s):
-        return "".join([c for c in str(s) if c.isalnum()])
+        return "".join([c for c in str(s) if c.isalnum() or c in ("_", "-")])
 
     return {
         "Date": str(pvdset.get_scan_time()["date"]),
@@ -96,14 +91,22 @@ def convert_studies_from_bruker(input_dir, output_dir, skip_existing=True):
             pvdset = brkraw.load(str(study_path))
             study_info = get_study_info(pvdset)
 
-            subj_sess = f"sub-{study_info['SubjectID']}_ses-{study_info['SessionID']}"
+            subj_val = study_info['SubjectID']
+            if not subj_val.startswith("sub-"):
+                subj_val = f"sub-{subj_val}"
+
+            if study_info['SessionID'] and study_info['SessionID'] != "unknown":
+                subj_sess = f"{subj_val}_ses-{study_info['SessionID']}"
+            else:
+                subj_sess = subj_val
+
             target_base = output_root / "sourcedata" / subj_sess
 
             if skip_existing and target_base.exists():
                 stats["skipped"] += 1
                 continue
 
-            for scan_id, recos in tqdm(pvdset._avail.items(), desc="Scans", leave=False):
+            for scan_id, recos in pvdset._avail.items():
                 try:
                     method = pvdset.get_method(scan_id)
                     for reco_id in recos:
@@ -168,3 +171,31 @@ def convert_studies_from_bruker(input_dir, output_dir, skip_existing=True):
         with open(log_file, "w") as f:
             f.write("\n".join(error_log))
         print(f"Error details save in: {log_file}")
+
+if __name__ == "__main__":
+    input_path = "C://Users//hugdp//Desktop//Test_converters//archivos_raquel//20260306_125921_B060326_WTF1_d10_DCE_1_1"
+    output_path = "C://Users//hugdp//Desktop//Test_converters//archivos_raquel//prueba_output_hugo"
+    skip_existing = True  # False if we want to overwrite
+
+    print("-" * 50)
+    print("Starting the Bruker to Nifti transformation")
+    print(f"Input: {Path(input_path).absolute()}")
+    print(f"Output:  {Path(output_path).absolute()}")
+    print("-" * 50)
+
+    convert_studies_from_bruker(
+        input_dir=input_path,
+        output_dir=output_path,
+        skip_existing=skip_existing
+    )
+
+    print("\n" + "=" * 50)
+    print("PROCESS FINISHED")
+    print(f"CHECK THE FOLDER: {output_path}/sourcedata")
+
+    log_path = Path(output_path) / "conversion_report.log"
+    if log_path.exists():
+        print(f"ERROR DETECTED, CHECK: {log_path}")
+    else:
+        print("EVERYTHING WENT WELL")
+    print("=" * 50)

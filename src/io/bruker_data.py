@@ -1,3 +1,4 @@
+#folder categories in which the results will be saved
 acq_categories_BIDS = {
     "localizer": "anat",
     "T2w": "anat",

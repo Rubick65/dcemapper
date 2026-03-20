@@ -1,15 +1,12 @@
 import os
 import sys
-
 import numpy as np
+from PyQt6 import sip
 from pathlib import Path
 from PyQt6.QtCore import Qt, QSize, QTimer
-from PyQt6.QtGui import QPixmap, QImage
-from PyQt6.QtWidgets import QApplication, QMainWindow, QHBoxLayout, QVBoxLayout, QWidget, QScrollArea, QLabel, \
-    QSizePolicy
+from PyQt6.QtGui import QPixmap, QImage, QKeySequence, QShortcut, QIntValidator
+from PyQt6.QtWidgets import QApplication, QMainWindow, QHBoxLayout, QVBoxLayout, QWidget, QScrollArea, QLabel, QSizePolicy, QSlider, QLineEdit
 from matplotlib.widgets import RectangleSelector, EllipseSelector
-from nibabel.testing import data_path
-
 from src.io.nifti_io import load_nifti, get_nifti_slices
 from src.roi.roi_creation import create_rectangular_mask, update_elliptical_mask_subtractive
 from src.ui.Images_Class.ClickImage import ClickImage
@@ -21,16 +18,14 @@ from src.ui.interface.NiftiToolbar import NiftiToolbar
 # -----------------CONSTANTS-----------------
 window_minSize = QSize(1125, 500)
 
-image_selector_maxSize = QSize(90, 90)
+image_in_selector_maxSize = QSize(90, 90)
+selector_minWidth = 280
 
 amount_image_selector_in_row = 2
 
 main_image_minSize = QSize(400, 400)
 
-movie_speed = 100 #miliseconds fps
-
 name_current_dir = os.path.dirname(os.path.abspath(__file__))
-
 
 class MainWindow(QMainWindow):
     def __init__(self,nifty_path = None):
@@ -41,18 +36,25 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(window_minSize)
         self.resize(1200, 700)
         self.nifty_path = nifty_path
+        self.movie_speed = 100  # miliseconds fps
         self.graphic = None
         self.canvas = None
         self.toolbar = None
+        self.slider_t = None
+        self.slider_t_input = None
+        self.slider_fps = None
+        self.slider_fps_input = None
         self.click_pressed = False
         self.record_layout = None
         self.data= None
+        self.original_data = None
         self.movie_timer = QTimer()
         self.movie_timer.timeout.connect(self.next_movie_frame)
 
         self.left_container = None
         self.mid_container = None
         self.right_container = None
+
         self.current_roi = None
         self.roi_selector_list = []
         self.selected_roi = ""
@@ -78,6 +80,7 @@ class MainWindow(QMainWindow):
 
         main_widget.setLayout(self.main_layout)
         self.setFocus()
+        self.init_shortcuts()
 
     def set_nifti(self, nifty_path):
         """
@@ -87,6 +90,7 @@ class MainWindow(QMainWindow):
         """
         self.nifty_path = nifty_path
         self.data, _ = load_nifti(self.nifty_path)
+        self.original_data = self.data.copy()
 
         #We clean the layout
         self.clear_layout(self.main_layout)
@@ -117,58 +121,63 @@ class MainWindow(QMainWindow):
         if event.button == 1:
             self.click_pressed = False
 
-    def keyPressEvent(self, event):
-        """
-        Events for the keypress pressed
-        """
-        if not self.toolbar and not event.type() == event.Type.KeyPress:
-            super().keyPressEvent(event)
-            return
+    def init_shortcuts(self):
+        shortcuts = {
+            Qt.Key.Key_Left: self.toolbar.go_back,
+            Qt.Key.Key_Right: self.toolbar.go_forward,
+            Qt.Key.Key_Space: self.toggle_movie_mode,
+            Qt.Key.Key_H: self.toolbar.home,
+            Qt.Key.Key_Comma: self.toolbar.back,
+            Qt.Key.Key_Period: self.toolbar.forward,
+            Qt.Key.Key_Z: self.handle_zoom_key,
+            Qt.Key.Key_M: self.handle_pan_key,
+            Qt.Key.Key_F: self.toggle_fullscreen,
+            Qt.Key.Key_Backspace: self.go_to_previous_roi
+        }
+        for key, callback in shortcuts.items():
+            shortcut = QShortcut(QKeySequence(key), self)
+            shortcut.activated.connect(callback)
 
-        match event.key():
-            case Qt.Key.Key_Left:
-                self.toolbar.go_back()
+    def handle_zoom_key(self):
+        if self.toolbar and not self.toolbar.mode.name == 'PAN' and not self.click_pressed:
+            self.toolbar.zoom()
 
-            case Qt.Key.Key_Right:
-                self.toolbar.go_forward()
-
-            case Qt.Key.Key_Space:
-                self.toggle_movie_mode()
-
-            case Qt.Key.Key_H:
-                self.toolbar.home()
-
-            case Qt.Key.Key_Backspace:
-                self.toolbar.back()
-
-            case Qt.Key.Key_Plus:
-                self.toolbar.forward()
-
-            case Qt.Key.Key_Z:
-                if not self.toolbar.mode.name == 'PAN' and not self.click_pressed:
-                    self.toolbar.zoom()
-
-            case Qt.Key.Key_M:
-                if not self.toolbar.mode.name == 'ZOOM' and not self.click_pressed:
-                    self.toolbar.pan()
-
-            case Qt.Key.Key_F:
-                self.toggle_fullscreen()
+    def handle_pan_key(self):
+        if self.toolbar and not self.toolbar.mode.name == 'ZOOM' and not self.click_pressed:
+            self.toolbar.pan()
 
     def toggle_movie_mode(self):
         if self.movie_timer.isActive():
             self.movie_timer.stop()
         else:
-            self.movie_timer.start(movie_speed)
+            self.movie_timer.start(self.movie_speed)
 
     def next_movie_frame(self):
         if not self.canvas or self.data is None:
             return
 
-        current_z = self.canvas.current_z
-        total_slices = self.data.shape[2]
-        next_z = (current_z + 1) % total_slices
-        self.update_main_canvas_by_index(next_z)
+        current_t = self.canvas.current_t
+        total_points_time = self.data.shape[3]
+
+        if current_t + 1 < total_points_time:
+            next_t = current_t + 1
+            self.slider_t.setValue(next_t)
+
+        else:
+            self.movie_timer.stop()
+            self.slider_t.setValue(0)
+
+    def update_main_canvas_by_time(self, index_t):
+        """
+        Update of the main canvas image with the T index
+        :param index_t: Current T index of the slice that we want.
+        :return: NiftiCanvas with the current T
+        """
+        # If we found the old Canvas, we put the slice we want to see
+        if self.canvas:
+            self.canvas.set_t(index_t)
+            if index_t == 0 and self.movie_timer.isActive():
+                self.movie_timer.stop()
 
     def toggle_fullscreen(self):
         if self.isFullScreen():
@@ -183,6 +192,15 @@ class MainWindow(QMainWindow):
         label = QLabel(info)
         # We add the info in the top of the layout
         self.record_layout.addWidget(label)
+
+    def eventFilter(self, obj, event):
+        # Si el evento es un click de ratón (cualquier botón)
+        if event.type() == event.Type.MouseButtonPress:
+            # Si el objeto que recibió el click es el slider_t o el input_t
+            if obj == self.slider_t or obj == self.slider_t_input:
+                self.stop_movie_mode()
+
+        return super().eventFilter(obj, event)
 
     def create_graphic(self, x, y, value):
         """
@@ -300,7 +318,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(line)
 
         scroll = QScrollArea()
-        scroll.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        #scroll.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         scroll.setWidgetResizable(True)
 
         scroll_content = QWidget()
@@ -316,8 +334,11 @@ class MainWindow(QMainWindow):
         main_container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         # To prevent it from taking focus from the keyboard when it is clicked
-        main_container.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        #main_container.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         main_container.setLayout(layout)
+
+        main_container.setObjectName("graphic")
+
         return main_container
 
     def main_image_layout(self, data):
@@ -345,6 +366,10 @@ class MainWindow(QMainWindow):
         container = QWidget()
         container.setMinimumSize(main_image_minSize)
         container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+        container.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        container.setObjectName("main_image")
+
         container.setLayout(layout)
 
         self.toolbar.roi_menu.selected_text_signal.connect(self.change_roi_selector)
@@ -353,7 +378,7 @@ class MainWindow(QMainWindow):
         return container
 
     def go_to_previous_roi(self):
-        if not self.mask_history or self.current_mask_counter < 0:
+        if not self.mask_history or self.current_mask_counter < 0 and self.data:
             self.data = self.original_data.copy()
             self.current_mask_counter = -1
             self.mask_history = []
@@ -371,12 +396,126 @@ class MainWindow(QMainWindow):
 
         self.update_widgets(self.data, roi_slices_t0)
 
+    def update_time_from_slider(self, t_value):
+        """
+        Updates the current T point and refreshes the UI with the slider
+        :param t_value: selected T index
+        """
+        #We block the input signals to prevent a loop
+        self.slider_t_input.blockSignals(True)
+        self.slider_t_input.setText(str(t_value))
+        self.slider_t_input.blockSignals(False)
+
+        if self.canvas:
+            self.canvas.set_t(t_value)
+
+    def update_time_from_text(self):
+        """
+        Updates the slider based on manual text input
+        """
+        text_val = self.slider_t_input.text()
+        if text_val:
+            new_t = int(text_val)
+            self.slider_t.setValue(new_t)
+
+            if self.movie_timer.isActive():
+                self.movie_timer.stop()
+
+    def update_fps_from_slider(self, fps_value):
+        """
+        Updates the current fps point and refreshes the UI with the slider
+        :param fps_value: selected fps index
+        """
+        #We block the input signals to prevent a loop
+        self.slider_fps_input.blockSignals(True)
+        self.slider_fps_input.setText(str(fps_value))
+        self.slider_fps_input.blockSignals(False)
+
+        if fps_value > 0:
+            self.movie_speed = int(1000 / fps_value)
+        else:
+            self.movie_speed = 1000
+
+        if self.movie_timer.isActive():
+            self.movie_timer.stop()
+
+    def update_fps_from_text(self):
+        """
+        Updates the slider based on manual text input
+        """
+        text_val = self.slider_fps_input.text()
+        if text_val:
+            new_fps = int(text_val)
+            self.slider_fps.setValue(new_fps)
+            if self.movie_timer.isActive():
+                self.movie_timer.stop()
+
+    def stop_movie_mode(self):
+        if self.movie_timer.isActive():
+            self.movie_timer.stop()
+
+    def slider_label(self,label_text, min_range, max_range, init_val, slider_callback, text_callback,stop_movie = False):
+        container_widget = QWidget()
+        container_widget.setFixedWidth(selector_minWidth)
+        layout = QVBoxLayout(container_widget)
+
+        input_row_layout = QHBoxLayout()
+
+        label = QLabel(f"<b>{label_text}:</b>")
+        line_edit = QLineEdit(str(init_val))
+        line_edit.setFixedWidth(35)
+        line_edit.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        validator = QIntValidator(min_range, max_range, self)
+        line_edit.setValidator(validator)
+
+        input_row_layout.addStretch()
+        input_row_layout.addWidget(label)
+        input_row_layout.addWidget(line_edit)
+        input_row_layout.addStretch()
+
+        slider = QSlider(Qt.Orientation.Horizontal)
+        slider.setMinimum(min_range)
+        slider.setMaximum(max_range)
+        slider.setValue(init_val)
+
+        slider.valueChanged.connect(slider_callback)
+        line_edit.editingFinished.connect(text_callback)
+
+        if stop_movie:
+            slider.installEventFilter(self)
+            line_edit.installEventFilter(self)
+
+        layout.addLayout(input_row_layout)
+        layout.addWidget(slider)
+
+        return container_widget, slider, line_edit
+
     def image_selector_layout(self, images_data):
         """
         Function to create the image selector layout
         :param images_data: array of data nifti image
         :return: QScroll with all the images
         """
+        main_left_widget = QWidget()
+        main_left_widget.setFixedWidth(selector_minWidth)
+        main_left_layout = QVBoxLayout(main_left_widget)
+        main_left_layout.setContentsMargins(0, 0, 0, 0)
+
+        num_t_points = self.data.shape[3] if self.data is not None else 1
+
+        slider_t_group, self.slider_t, self.slider_t_input = self.slider_label(
+            "Time Point (T)", 0, num_t_points - 1, 0,
+            self.update_time_from_slider, self.update_time_from_text,True
+        )
+
+        slider_fps_group, self.slider_fps, self.slider_fps_input = self.slider_label(
+            "FPS", 1, 60, 30,
+            self.update_fps_from_slider, self.update_fps_from_text
+        )
+
+        main_left_layout.addWidget(slider_t_group)
+        main_left_layout.addWidget(slider_fps_group)
+
         container = QWidget()
         selector_layout = QVBoxLayout(container)
         selector_layout.setSpacing(30)
@@ -395,7 +534,7 @@ class MainWindow(QMainWindow):
                 # With the current index image in the row(0,1,2)
                 # We take out the actual slice (Z)
                 global_index = i + j
-                image = self.selector_image_creation(current_image, image_selector_maxSize, global_index)
+                image = self.selector_image_creation(current_image, image_in_selector_maxSize, global_index)
                 row_layout.addWidget(image)
                 row_layout.addSpacing(50)
 
@@ -403,22 +542,24 @@ class MainWindow(QMainWindow):
             if len(row_images) < amount_image_selector_in_row:
                 for _ in range(amount_image_selector_in_row - len(row_images)):
                     spacer = QWidget()
-                    spacer.setFixedSize(image_selector_maxSize)
+                    spacer.setFixedSize(image_in_selector_maxSize)
                     row_layout.addWidget(spacer, 0)
                     row_layout.addSpacing(50)
 
             selector_layout.addWidget(row_widget)
 
-        selector_layout.addStretch(1)
         scroll = QScrollArea()
-        scroll.setFixedWidth(280)
+        scroll.setFixedWidth(selector_minWidth)
         scroll.setWidgetResizable(True)
         # No focus of the keyboard when clicked
-        scroll.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        # scroll.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         # deactivation of the horizontal bar
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setObjectName("selector")
         scroll.setWidget(container)
-        return scroll
+        main_left_layout.addWidget(scroll)
+
+        return main_left_widget
 
     def create_rectangle_selector(self):
         ax = self.canvas.axes
@@ -478,6 +619,11 @@ class MainWindow(QMainWindow):
 
         self.data = roi4d_array
 
+        QTimer.singleShot(1, lambda: self.update_widgets(roi4d_array, roi_slices_t0))
+
+    def update_widgets(self, roi4d_images, roi_slices_t0):
+        old_canvas = self.canvas
+
         if self.current_roi:
             self.current_roi.set_visible(False)
             self.canvas.draw_idle()
@@ -489,7 +635,6 @@ class MainWindow(QMainWindow):
         self.left_container.setParent(None)
         self.left_container.deleteLater()
         self.left_container = self.image_selector_layout(np.array(roi_slices_t0))
-
         self.main_layout.insertWidget(0, self.left_container)
 
         self.canvas.update_image(self.data)
@@ -510,7 +655,7 @@ class MainWindow(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    example_file = os.path.join(data_path, 'example4d.nii.gz')
+    example_file = os.path.join("C://Users//hugdp//Desktop//Test_converters//archivos_raquel//prueba_output_hugo//sourcedata//sub-B060326_ses-WTF1_d10_DCE//perf//sub-B060326_ses-WTF1_d10_DCE_acq-10_run-1_dce.nii.gz")
     window = MainWindow(example_file)
 
     window.show()
