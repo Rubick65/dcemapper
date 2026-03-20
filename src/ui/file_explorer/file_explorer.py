@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QListWidget,
     QVBoxLayout, QMenuBar, QMenu
 
 from src.utils.misc import denoise_filters_dict, file_options_dict
+from src.utils.get_file_to_process import get_files_to_process
 
 
 class NonePersistentMenu(QMenu):
@@ -56,16 +57,14 @@ class PreprocessingMenu(PersistentMenu):
         """
 
         # Create preprocessing actions
-        preprocessing_actions = self.create_preprocessing_menus()
 
         # Create preprocessing menu
         self.setTitle("&Preprocessing")
         # Tracks mouse
         self.setMouseTracking(True)
-        # Adds actions to preprocessing menu
-        self.addActions(preprocessing_actions)
+        self.create_preprocessing_menus()
 
-    def create_preprocessing_menus(self) -> tuple:
+    def create_preprocessing_menus(self):
         """
         Creates preprocessing actions
         :returns a tuple with all the preprocessing actions
@@ -78,12 +77,7 @@ class PreprocessingMenu(PersistentMenu):
         gibbs_artifact_suppression.setStatusTip("Gibbs artifact suppression")
         gibbs_artifact_suppression.setCheckable(True)
 
-        # Bias field correction
-        bias_field_correction = QAction("&Bias field correction", self)
-        bias_field_correction.setStatusTip("Bias field correction")
-        bias_field_correction.setCheckable(True)
-
-        return gibbs_artifact_suppression, bias_field_correction
+        self.addAction(gibbs_artifact_suppression)
 
 
 class DenoiseMenu(PersistentMenu):
@@ -176,12 +170,15 @@ class FileMenu(PersistentMenu):
             # If files exists
             if files:
                 # Emits a signal with the path to the files
+                return files
                 self.file_signal.emit(files)
 
     def different_file_options(self, selected_option):
+        files_to_process = {}
         match selected_option:
             case "n":
-                self.file_selector()
+                path = self.file_selector()
+                files_to_process = get_files_to_process(path)
 
 
 class TopMenu(QMenuBar):
