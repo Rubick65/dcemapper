@@ -3,7 +3,7 @@ import sys
 
 import numpy as np
 from pathlib import Path
-from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtCore import Qt, QSize, QTimer
 from PyQt6.QtGui import QPixmap, QImage
 from PyQt6.QtWidgets import QApplication, QMainWindow, QHBoxLayout, QVBoxLayout, QWidget, QScrollArea, QLabel, \
     QSizePolicy
@@ -25,16 +25,15 @@ image_selector_maxSize = QSize(90, 90)
 
 amount_image_selector_in_row = 2
 
-main_image_minSize = QSize(450, 400)
+main_image_minSize = QSize(400, 400)
 
-graphic_minSize = QSize(350, 350)
-graphic_scroll_minSize = QSize(350, 350)
+movie_speed = 100 #miliseconds fps
 
 name_current_dir = os.path.dirname(os.path.abspath(__file__))
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, nifty_path):
+    def __init__(self,nifty_path = None):
         super().__init__()
         self.mask_history = []
         self.current_mask_counter = -1
@@ -47,6 +46,13 @@ class MainWindow(QMainWindow):
         self.toolbar = None
         self.click_pressed = False
         self.record_layout = None
+        self.data= None
+        self.movie_timer = QTimer()
+        self.movie_timer.timeout.connect(self.next_movie_frame)
+
+        self.left_container = None
+        self.mid_container = None
+        self.right_container = None
         self.current_roi = None
         self.roi_selector_list = []
         self.selected_roi = ""
@@ -63,26 +69,45 @@ class MainWindow(QMainWindow):
         self.full_mask = np.ones(self.data.shape[:3], dtype=bool)
 
         # Horizontal layout of widget to position other widgets
+        #Horizontal layout of widget to position other widgets
         self.main_layout = QHBoxLayout(main_widget)
 
-        self.nifti_slices = get_nifti_slices(self.data)
-        # Creation of the image selector container
-        self.left_container = self.image_selector_layout(self.nifti_slices)
+        if self.nifty_path:
+            #If we have data, we load it
+            self.set_nifti(self.nifty_path)
 
-        # Creation of the main image container
+        main_widget.setLayout(self.main_layout)
+        self.setFocus()
+
+    def set_nifti(self, nifty_path):
+        """
+        Function to load al the componets in the interface with the data
+        :param nifty_path: Nifti image path
+        :return: Creation of the data interface
+        """
+        self.nifty_path = nifty_path
+        self.data, _ = load_nifti(self.nifty_path)
+
+        #We clean the layout
+        self.clear_layout(self.main_layout)
+
+        #Create all the containers
+        self.left_container = self.image_selector_layout(get_nifti_slices(self.data))
         self.mid_container = self.main_image_layout(self.data)
-
-        # Creation of the graphic intensity container
         self.right_container = self.graphic_layout()
 
         self.main_layout.addWidget(self.left_container)
         self.main_layout.addWidget(self.mid_container)
         self.main_layout.addWidget(self.right_container)
 
-        main_widget.setLayout(self.main_layout)
+        self.update()
 
-        # We put the keyboard focus on the window
-        self.setFocus()
+    def clear_layout(self, layout):
+        #If layout is not empty we delete his childrens
+        while layout.count():
+            child = layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
 
     def clicked(self, event):
         if event.button == 1:
@@ -107,6 +132,9 @@ class MainWindow(QMainWindow):
             case Qt.Key.Key_Right:
                 self.toolbar.go_forward()
 
+            case Qt.Key.Key_Space:
+                self.toggle_movie_mode()
+
             case Qt.Key.Key_H:
                 self.toolbar.home()
 
@@ -126,6 +154,21 @@ class MainWindow(QMainWindow):
 
             case Qt.Key.Key_F:
                 self.toggle_fullscreen()
+
+    def toggle_movie_mode(self):
+        if self.movie_timer.isActive():
+            self.movie_timer.stop()
+        else:
+            self.movie_timer.start(movie_speed)
+
+    def next_movie_frame(self):
+        if not self.canvas or self.data is None:
+            return
+
+        current_z = self.canvas.current_z
+        total_slices = self.data.shape[2]
+        next_z = (current_z + 1) % total_slices
+        self.update_main_canvas_by_index(next_z)
 
     def toggle_fullscreen(self):
         if self.isFullScreen():
@@ -165,6 +208,20 @@ class MainWindow(QMainWindow):
         # If we found the old Canvas, we put the slice we want to see
         if self.canvas:
             self.canvas.set_z(index_z)
+            if index_z == 0 and self.movie_timer.isActive():
+                self.movie_timer.stop()
+
+    def update_main_canvas_by_index_click(self, index_z):
+        """
+        Update of the main canvas image with the Z index
+        And stop the movie mode if is active
+        :param index_z: Current Z index of the slice that we want.
+        :return: NiftiCanvas with the current Z
+        """
+        #If we found the old Canvas, we put the slice we want to see
+        if self.canvas:
+            self.canvas.set_z(index_z)
+            self.movie_timer.stop() #We stop if we are in movie mode
 
     def normalize_img(self, img):
         """
@@ -220,8 +277,8 @@ class MainWindow(QMainWindow):
         vbox.addWidget(image_container)
         vbox.addWidget(label_text)
 
-        # We add and event to each image to update the main image with this image z value
-        image_container.image_clicked.connect(lambda: self.update_main_canvas_by_index(index))
+        #We add and event to each image to update the main image with this image z value
+        image_container.image_clicked.connect(lambda: self.update_main_canvas_by_index_click(index))
 
         return container_widget
 
