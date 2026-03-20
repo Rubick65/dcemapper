@@ -181,3 +181,16 @@ def activate_selector(selected_selector: _SelectorWidget):
 
 def deactivate_selector(selected_selector: _SelectorWidget):
     selected_selector.set_active(False)
+
+
+def get_modality_nii_acq(nii_file):
+    if "_DCE_acq" in nii_file:
+        return "DCE map"
+    else:
+        return None
+
+
+def is_nii(filename):
+    if not isinstance(filename, str):
+        filename = str(filename)
+    return filename.endswith(".nii") or filename.endswith(".nii.gz")

@@ -1,47 +1,42 @@
 import numpy as np
 
 
-def create_rectangular_mask(roi_coords, data_slice):
+def create_rectangular_mask(roi_coords, full_mask, z_index):
     try:
+        new_selection = np.zeros((full_mask.shape[0], full_mask.shape[1]), dtype=bool)
+
         x1, y1, x2, y2 = map(int, map(np.floor, roi_coords))
-        mask = create_empty_mask(data_slice)
+        ix1, ix2 = sorted([x1, x2])
+        iy1, iy2 = sorted([y1, y2])
 
-        ix1, ix2 = sorted([int(x1), int(x2)])
-        iy1, iy2 = sorted([int(y1), int(y2)])
+        ix1, ix2 = np.clip([ix1, ix2], 0, full_mask.shape[0])
+        iy1, iy2 = np.clip([iy1, iy2], 0, full_mask.shape[1])
 
-        # Clip para no salirnos del array
-        ix1, ix2 = np.clip([ix1, ix2], 0, data_slice.shape[0])
-        iy1, iy2 = np.clip([iy1, iy2], 0, data_slice.shape[1])
+        new_selection[ix1:ix2, iy1:iy2] = True
 
-        mask[ix1:ix2, iy1:iy2] = True
+        full_mask[:, :, z_index] = full_mask[:, :, z_index] & new_selection
 
-        return mask
+        return full_mask
 
     except Exception as e:
         print(f"Error procesando el ROI: {e}")
 
 
-def create_elliptical_mask(roi_coords, ellipsis_center, radius, data_slice):
-    x1, y1, x2, y2 = map(int, map(np.floor, roi_coords))
+def update_elliptical_mask_subtractive(full_mask, ellipsis_center, radius, z_index):
+    try:
+        xc, yc = ellipsis_center
+        a, b = radius
 
-    ix1, ix2 = sorted([int(x1), int(x2)])
-    iy1, iy2 = sorted([int(y1), int(y2)])
+        x = np.arange(full_mask.shape[0])
+        y = np.arange(full_mask.shape[1])
+        xv, yv = np.meshgrid(x, y, indexing='ij')
 
-    ix1, ix2 = np.clip([ix1, ix2], 0, data_slice.shape[0])
-    iy1, iy2 = np.clip([iy1, iy2], 0, data_slice.shape[1])
+        inside_ellipse = ((xv - xc) ** 2 / a ** 2 + (yv - yc) ** 2 / b ** 2) <= 1
 
-    xc, yc = ellipsis_center
-    a, b = radius
+        full_mask[:, :, z_index] = full_mask[:, :, z_index] & inside_ellipse
 
-    mask = create_empty_mask(data_slice)
+        return full_mask
 
-    for y in range(iy1, iy2):
-        for x in range(ix1, ix2):
-            if ((x - xc) ** 2) / (a ** 2) + ((y - yc) ** 2) / (b ** 2) <= 1:
-                mask[x, y] = True
-
-    return mask
-
-
-def create_empty_mask(data_slice):
-    return np.zeros_like(data_slice, dtype=bool)
+    except Exception as e:
+        print(f"Error en máscara elíptica: {e}")
+        return full_mask
