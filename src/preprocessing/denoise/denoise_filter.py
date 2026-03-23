@@ -14,7 +14,6 @@ from skimage.restoration import denoise_nl_means
 
 from src.io.nifti_io import load_nifti
 from src.utils.utils import create_general_preprocess_output, rename_associated_files, info_and_ask_denoising_params
-from src.visualization.filter_visualization import ask_user_parameters
 
 
 def denoise_init(nifti_filename_list, study_acq_derivatives_dir, processing_filenames_list):
@@ -42,6 +41,8 @@ def denoise_init(nifti_filename_list, study_acq_derivatives_dir, processing_file
                 )
             )
             processing_filenames_list[i] = denoised_nii_output_path
+
+        return processing_filenames_list
 
 
 def denoise(
