@@ -6,10 +6,9 @@ from PyQt6.QtGui import QAction, QActionGroup
 from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QListWidget, QGridLayout, QWidget, \
     QVBoxLayout, QMenuBar, QMenu
 
-from src.preprocessing.gibbs_removal.gibbs_removal import gibbs_suppress
-from src.utils.misc import denoise_filters_dict, file_options_dict
-from src.utils.get_file_to_process import get_files_to_process
 from src.io.bruker_conversion import convert_studies_from_bruker
+from src.utils.get_file_to_process import get_files_to_process
+from src.utils.misc import denoise_filters_dict, file_options_dict
 
 
 class NonePersistentMenu(QMenu):

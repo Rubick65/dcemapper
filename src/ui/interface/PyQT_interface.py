@@ -39,7 +39,7 @@ class MainWindow(QMainWindow):
         self.current_mask_counter = -1
         self.setWindowTitle("dcemapper")
         self.setMinimumSize(window_minSize)
-        self.screen_size = self.screen().availableGeometry() #Window size
+        self.screen_size = self.screen().availableGeometry()  # Window size
         width = int(self.screen_size.width() * 0.4)
         height = int(self.screen_size.height() * 0.7)
         self.resize(width, height)
@@ -55,6 +55,8 @@ class MainWindow(QMainWindow):
         self.slider_fps_input = None
         self.input_x = None
         self.input_y = None
+        self.x = None
+        self.y = None
         self.selector_layout = None
         self.click_pressed = False
         self.record_layout = None
@@ -96,7 +98,6 @@ class MainWindow(QMainWindow):
         main_widget.setLayout(self.main_layout)
 
     def set_various_files(self, nifty_path):
-
         if isinstance(nifty_path, tuple):
             self.current_subject = nifty_path[0]
             nifty_path = nifty_path[1]
@@ -128,6 +129,13 @@ class MainWindow(QMainWindow):
             self.graphic.close_graph()
             self.graphic.deleteLater()
             self.graphic = None
+
+        max_x, max_y = self.get_max_coordinates()
+        if self.x and self.y:
+            self.x.validator().setTop(max_x)
+            self.y.validator().setTop(max_y)
+            self.x.setText("0")
+            self.y.setText("0")
 
         self.mask_history = []
         self.current_mask_counter = -1
@@ -247,6 +255,15 @@ class MainWindow(QMainWindow):
             if index_t == 0 and self.movie_timer.isActive():
                 self.movie_timer.stop()
 
+    def update_graphic_by_input(self):
+        if self.graphic:
+            x = int(self.x.text())
+            y = int(self.y.text())
+            z = self.canvas.current_z
+            intensities_t = self.data[x, y, z, :]
+            self.graphic.update_graph(intensities_t, x, y)
+            self.add_to_record(x, y, z, intensities_t)
+
     def toggle_fullscreen(self):
         if self.isFullScreen():
             self.showNormal()
@@ -262,9 +279,7 @@ class MainWindow(QMainWindow):
         self.record_layout.addWidget(label)
 
     def eventFilter(self, obj, event):
-        # Si el evento es un click de ratón (cualquier botón)
         if event.type() == event.Type.MouseButtonPress:
-            # Si el objeto que recibió el click es el slider_t o el input_t
             if obj == self.slider_t or obj == self.slider_t_input:
                 self.stop_movie_mode()
 
@@ -284,6 +299,12 @@ class MainWindow(QMainWindow):
 
         # We upload the graphic with the new data
         self.graphic.update_graph(intensities_t, x, y)
+        self.x.blockSignals(True)
+        self.y.blockSignals(True)
+        self.x.setText(str(x))
+        self.y.setText(str(y))
+        self.x.blockSignals(False)
+        self.y.blockSignals(False)
 
     def update_main_canvas_by_index(self, index_z):
         """
@@ -368,21 +389,22 @@ class MainWindow(QMainWindow):
         Creation of the layout that contains the graphic
         :return: the layout with the graphic created
         """
-        main_container = QScrollArea()
+        container = QScrollArea()
         self.graphic = IntensityGraph()
 
+        max_x, max_y = self.get_max_coordinates()
+
+        self.input_x, self.x = self.input_label("Coor X", 0, max_x, 0, self.update_graphic_by_input)
+        self.input_y, self.y = self.input_label("Coor Y", 0, max_y, 0, self.update_graphic_by_input)
+
+        input_box = QHBoxLayout()
+        input_box.addLayout(self.input_x)
+        input_box.addLayout(self.input_y)
+
         layout = QVBoxLayout()
+        layout.addLayout(input_box)
+        layout.addSpacing(8)
         layout.addWidget(self.graphic)
-
-        #Create later
-
-        #max_x, max_y = self.get_max_coordinates()
-
-        #input_x = self.input_label("Coor X",0,max_x,0,self.create_graphic)
-        #input_y = self.input_label("Coor Y",0,max_y,0,self.create_graphic)
-
-        #layout.addLayout(input_x)
-        #layout.addLayout(input_y)
 
         # line to separate the graphic and the record
         line = QWidget()
@@ -402,17 +424,19 @@ class MainWindow(QMainWindow):
         layout.addWidget(QLabel("<b>Clicks record:</b>"))
         layout.addWidget(scroll)
 
-        main_container.setMinimumWidth(int(self.screen_size.width() * 0.25))
+        container.setMinimumWidth(int(self.screen_size.width() * 0.25))
+        container.setMinimumHeight(
+            int(self.screen_size.height() * 0.25))  # Test needing !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         # main_container.setWidgetResizable(True)
-        main_container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         # To prevent it from taking focus from the keyboard when it is clicked
         # main_container.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        main_container.setLayout(layout)
+        container.setLayout(layout)
 
-        main_container.setObjectName("graphic")
+        container.setObjectName("graphic")
 
-        return main_container
+        return container
 
     def main_image_layout(self, data):
         """
@@ -438,6 +462,7 @@ class MainWindow(QMainWindow):
 
         container = QWidget()
         container.setMinimumSize(main_image_minSize)
+        container.setMaximumWidth(int(self.screen_size.width() * 0.45))
         container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         container.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
@@ -473,9 +498,8 @@ class MainWindow(QMainWindow):
             self.canvas.set_t(t_value)
 
         if self.data is not None:
-            #We update with the T value the images of the selector
+            # We update with the T value the images of the selector
             slices_t = get_nifti_slices(self.data, current_t=t_value)
-            self.update_image_selector(slices_t)
 
     def update_time_from_text(self):
         """
@@ -522,7 +546,7 @@ class MainWindow(QMainWindow):
         if self.movie_timer.isActive():
             self.movie_timer.stop()
 
-    def input_label(self,input_text,min_range,max_range,init_val,text_callback):
+    def input_label(self, input_text, min_range, max_range, init_val, text_callback):
         input_row_layout = QHBoxLayout()
 
         label = QLabel(f"<b>{input_text}:</b>")
@@ -531,6 +555,19 @@ class MainWindow(QMainWindow):
         line_edit.setAlignment(Qt.AlignmentFlag.AlignCenter)
         validator = QIntValidator(min_range, max_range, self)
         line_edit.setValidator(validator)
+
+        def force_range(text):
+            if text == "": return
+            try:
+                val = int(text)
+                if val > max_range:
+                    line_edit.setText(str(max_range))
+                elif val < min_range:
+                    pass
+            except ValueError:
+                pass
+
+        line_edit.textChanged.connect(force_range)
         line_edit.editingFinished.connect(text_callback)
 
         input_row_layout.addStretch()
@@ -538,9 +575,10 @@ class MainWindow(QMainWindow):
         input_row_layout.addWidget(line_edit)
         input_row_layout.addStretch()
 
-        return input_row_layout
+        return input_row_layout, line_edit
 
-    def slider_label(self, label_text, min_range, max_range, init_val, slider_callback, text_callback,stop_movie=False):
+    def slider_label(self, label_text, min_range, max_range, init_val, slider_callback, text_callback,
+                     stop_movie=False):
         container_widget = QWidget()
         container_widget.setFixedWidth(selector_minWidth)
         layout = QVBoxLayout(container_widget)
@@ -554,6 +592,17 @@ class MainWindow(QMainWindow):
         validator = QIntValidator(min_range, max_range, self)
         line_edit.setValidator(validator)
 
+        def force_range(text):
+            if text == "": return
+            try:
+                val = int(text)
+                if val > max_range:
+                    line_edit.setText(str(max_range))
+                elif val < min_range:
+                    pass
+            except ValueError:
+                pass
+
         input_row_layout.addStretch()
         input_row_layout.addWidget(label)
         input_row_layout.addWidget(line_edit)
@@ -565,6 +614,7 @@ class MainWindow(QMainWindow):
         slider.setValue(init_val)
 
         slider.valueChanged.connect(slider_callback)
+        line_edit.textChanged.connect(force_range)
         line_edit.editingFinished.connect(text_callback)
 
         if stop_movie:
@@ -576,17 +626,17 @@ class MainWindow(QMainWindow):
 
         return container_widget, slider, line_edit
 
-    def update_image_selector(self,images_data):
-        #We clean the selector
+    def update_image_selector(self, images_data):
+        # We clean the selector
         self.clear_layout(self.selector_layout)
 
-        #For each image in the data, we create a row according to the quantity we specify
+        # For each image in the data, we create a row according to the quantity we specify
         for i in range(0, len(images_data), amount_image_selector_in_row):
             row_widget = QWidget()
             row_layout = QHBoxLayout(row_widget)
             row_layout.setContentsMargins(0, 0, 0, 0)
 
-            #From the beginning of this row to the indicated amount
+            # From the beginning of this row to the indicated amount
             row_images = images_data[i:i + amount_image_selector_in_row]
 
             for j, current_image in enumerate(row_images):
@@ -743,7 +793,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     logo_path = os.path.join(name_current_dir, "assets", "logo.png")
     app.setWindowIcon(QIcon(logo_path))
-    #app.setStyle(QStyleFactory.create("Fusion"))
+    # app.setStyle(QStyleFactory.create("Fusion"))
     window = MainWindow()
 
     window.show()
