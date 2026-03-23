@@ -115,13 +115,19 @@ class DenoiseMenu(PersistentMenu):
 
 class FileMenu(PersistentMenu):
     # Signal for the selected files
-    file_signal = pyqtSignal(str)
+    files_signal = pyqtSignal(tuple)
+
+    one_file_signal = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.denoising_filters = []
         self.group = QActionGroup(self)
         self.group.setExclusive(False)
+        self.file_list = []
+        self.current_file_counter = 0
+        self.next_action = None
+        self.previous_action = None
         self.initMenu()
 
     def initMenu(self):
@@ -130,6 +136,8 @@ class FileMenu(PersistentMenu):
         self.group.triggered.connect(self.open_file_action)
 
     def file_actions(self):
+
+        self.displacer_action()
         for action, status_tip in file_options_dict.items():
             file_options = QAction(action, self)
             file_options.setStatusTip(status_tip)
@@ -138,6 +146,20 @@ class FileMenu(PersistentMenu):
             self.addAction(file_options)
 
             self.denoising_filters.append(file_options)
+
+    def displacer_action(self):
+        self.next_action = QAction("&Next", self)
+        self.next_action.setStatusTip("Button for going to next subject studies")
+        self.next_action.setEnabled(False)
+        self.next_action.triggered.connect(self.next_file)
+
+        self.previous_action = QAction("&Previous", self)
+        self.previous_action.setStatusTip("Button for going to previous subject studies")
+        self.previous_action.setEnabled(False)
+        self.previous_action.triggered.connect(self.previous_file)
+
+        self.addAction(self.previous_action)
+        self.addAction(self.next_action)
 
     def open_file_action(self, selected_action):
         selected_action_text = selected_action.text().split(" ")[1][0:2].lower()
@@ -176,36 +198,73 @@ class FileMenu(PersistentMenu):
             if files:
                 # Emits a signal with the path to the files
                 return files
-                self.file_signal.emit(files)
+                # self.file_signal.emit(files)
         else:
             raise ValueError()
 
     def different_file_options(self, selected_option):
-        f = ""
+        self.file_list = []
+        self.current_file_counter = 0
         try:
             match selected_option:
                 case "bi":
                     path = self.file_selector()
                     files_to_process = get_files_to_process(path[0])
-                    for file, archive in files_to_process.items():
-                        f = str(archive[0])
-                        break
+
+                    self.get_list_of_files_to_process(files_to_process)
+
                 case "ni":
                     f = self.file_selector(directory=False)
-                    f = f[0]
+                    self.one_file_signal.emit(f[0])
+
                 case "br":
                     path = self.file_selector()
                     input_path = path[0]
                     output_path = Path(input_path).parent
+
                     convert_studies_from_bruker(input_path, output_path)
                     files_to_process = get_files_to_process(output_path)
-                    for file, archive in files_to_process.items():
-                        f = str(archive[0])
-                        break
+
+                    self.get_list_of_files_to_process(files_to_process)
+
         except ValueError:
             pass
 
-        self.file_signal.emit(f)
+        if self.file_list:
+            self.activate_next_action()
+            self.files_signal.emit(self.file_list[0])
+
+    def get_list_of_files_to_process(self, files_to_process):
+        for file, archive in files_to_process.items():
+            archive_text = str(archive[0])
+            self.file_list.append((file, archive_text))
+
+    def activate_next_action(self):
+        if len(self.file_list) <= 1:
+            return
+        self.next_action.setEnabled(True)
+
+    def next_file(self):
+        self.current_file_counter += 1
+
+        if self.current_file_counter == len(self.file_list) - 1:
+            self.next_action.setEnabled(False)
+
+        self.files_signal.emit(self.file_list[self.current_file_counter])
+
+        if self.current_file_counter >= 0:
+            self.previous_action.setEnabled(True)
+
+    def previous_file(self):
+        self.current_file_counter -= 1
+
+        if self.current_file_counter == 0:
+            self.previous_action.setEnabled(False)
+
+        self.files_signal.emit(self.file_list[self.current_file_counter])
+
+        if self.current_file_counter < len(self.file_list) - 1:
+            self.next_action.setEnabled(True)
 
 
 class TopMenu(QMenuBar):
@@ -251,7 +310,7 @@ class MainWindow(QMainWindow):
         self.main_layout.addWidget(self.file_list)
 
         self.setMenuBar(self.top_menu)
-        self.top_menu.file_menu.file_signal.connect(self.receive_file_list)
+        self.top_menu.file_menu.files_signal.connect(self.receive_file_list)
 
     def initUI(self):
         # Main window configuration

@@ -62,6 +62,7 @@ class MainWindow(QMainWindow):
         self.data = None
         self.full_mask = None
         self.original_data = None
+        self.current_subject = None
         self.movie_timer = QTimer()
         self.movie_timer.timeout.connect(self.next_movie_frame)
 
@@ -74,7 +75,8 @@ class MainWindow(QMainWindow):
         self.selected_roi = ""
         self.top_bar = TopMenu()
         self.setMenuBar(self.top_bar)
-        self.top_bar.file_menu.file_signal.connect(self.set_nifti)
+        self.top_bar.file_menu.files_signal.connect(self.set_various_files)
+        self.top_bar.file_menu.one_file_signal.connect(self.set_nifti)
 
         # Main container
         main_widget = QWidget()
@@ -93,6 +95,14 @@ class MainWindow(QMainWindow):
             self.init_shortcuts()
 
         main_widget.setLayout(self.main_layout)
+
+    def set_various_files(self, nifty_path):
+
+        if isinstance(nifty_path, tuple):
+            self.current_subject = nifty_path[0]
+            nifty_path = nifty_path[1]
+
+        self.set_nifti(nifty_path)
 
     def set_nifti(self, nifty_path):
         """
@@ -731,12 +741,11 @@ class MainWindow(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    logo_path = os.path.join(name_current_dir,"assets", "logo.png")
+    logo_path = os.path.join(name_current_dir, "assets", "logo.png")
     app.setWindowIcon(QIcon(logo_path))
     app.setStyle(QStyleFactory.create("Fusion"))
     example = "C://Users//hugdp//Desktop//Test_converters//archivos_raquel//prueba_output_hugo//sourcedata//sub-B060326_ses-WTF1_d10_DCE\perf//sub-B060326_ses-WTF1_d10_DCE_acq-10_run-1_dce.nii.gz"
     window = MainWindow(example)
-
 
     window.show()
     sys.exit(app.exec())
