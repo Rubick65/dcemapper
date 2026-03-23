@@ -22,7 +22,7 @@ def load_nifti(path: str):
     return data, img
 
 
-def get_nifti_slices(data, current_t=0):
+def get_nifti_slices(data,current_t = 0):
     slice_max = data.shape[2]
     return [data[:, :, slice_idx, current_t].T for slice_idx in range(slice_max)]
 
