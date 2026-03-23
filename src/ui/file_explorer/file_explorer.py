@@ -6,6 +6,7 @@ from PyQt6.QtGui import QAction, QActionGroup
 from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QListWidget, QGridLayout, QWidget, \
     QVBoxLayout, QMenuBar, QMenu
 
+from src.preprocessing.gibbs_removal.gibbs_removal import gibbs_suppress
 from src.utils.misc import denoise_filters_dict, file_options_dict
 from src.utils.get_file_to_process import get_files_to_process
 from src.io.bruker_conversion import convert_studies_from_bruker
@@ -46,19 +47,21 @@ class PersistentMenu(NonePersistentMenu):
 
 
 class PreprocessingMenu(PersistentMenu):
+    preprocess_signal = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.gibbs_artifact_suppression = None
+        self.denoise_menu = None
+        self.preprocessing_action = None
         self.create_preprocessing_menu()
+        self.triggered.connect(self.check_preprocessing_condition)
 
     def create_preprocessing_menu(self):
         """
         Creates preprocessing menu section
         :return: None
         """
-
-        # Create preprocessing actions
-
         # Create preprocessing menu
         self.setTitle("&Preprocessing")
         # Tracks mouse
@@ -70,18 +73,73 @@ class PreprocessingMenu(PersistentMenu):
         Creates preprocessing actions
         :returns a tuple with all the preprocessing actions
         """
-        denoise_menu = DenoiseMenu(self)
-        self.addMenu(denoise_menu)
+        self.denoise_menu = DenoiseMenu(self)
+        self.addMenu(self.denoise_menu)
 
         # Gibbs artifact suppression
-        gibbs_artifact_suppression = QAction("&Gibbs artifact suppression", self)
-        gibbs_artifact_suppression.setStatusTip("Gibbs artifact suppression")
-        gibbs_artifact_suppression.setCheckable(True)
+        self.gibbs_artifact_suppression = QAction("&Gibbs artifact suppression", self)
+        self.gibbs_artifact_suppression.setStatusTip("Gibbs artifact suppression")
+        self.gibbs_artifact_suppression.setCheckable(True)
 
-        self.addAction(gibbs_artifact_suppression)
+        self.addAction(self.gibbs_artifact_suppression)
+        self.create_preprocessing_action()
+
+    def create_preprocessing_action(self):
+        self.preprocessing_action = QAction("&Preprocess", self)
+        self.preprocessing_action.setStatusTip("Start preprocessing")
+
+        self.preprocessing_action.setCheckable(False)
+        self.preprocessing_action.setEnabled(False)
+        self.preprocessing_action.triggered.connect(self.get_preprocessing_options)
+
+        self.addAction(self.preprocessing_action)
+
+    def get_preprocessing_options(self):
+
+        denoise_options = self.denoise_menu.group.actions()
+        gibbs = None
+        for option in denoise_options:
+            if option.isChecked():
+                denoise_options = option.text()
+                break
+
+        if self.gibbs_artifact_suppression.isChecked():
+            gibbs = self.gibbs_artifact_suppression.text()
+
+        if not denoise_options and not gibbs:
+            return
+
+        self.preprocessing(denoise_options, gibbs)
+
+    def preprocessing(self, denoise_options, gibbs):
+        print(f"{denoise_options}: {gibbs}")
+
+    def check_preprocessing_condition(self):
+
+        actions = self.actions()
+        activate_preprocess = self.check_preprocessing_actions(actions)
+
+        self.preprocessing_action.setEnabled(activate_preprocess)
+
+    def check_preprocessing_actions(self, actions):
+
+        preprocess = False
+        for action in actions:
+            submenu = action.menu()
+
+            if submenu is not None and isinstance(submenu, QMenu):
+                sub_actions = submenu.actions()
+                preprocess = self.check_preprocessing_actions(sub_actions)
+            else:
+                if action.isChecked():
+                    preprocess = True
+                    break
+
+        return preprocess
 
 
 class DenoiseMenu(PersistentMenu):
+    activate_preprocess_signal = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -107,6 +165,7 @@ class DenoiseMenu(PersistentMenu):
             self.denoising_filters.append(denoising_filter)
 
     def handle_exclusivity(self, selected_action):
+
         if selected_action.isChecked():
             for action in self.group.actions():
                 if action is not selected_action:
@@ -144,8 +203,6 @@ class FileMenu(PersistentMenu):
 
             self.group.addAction(file_options)
             self.addAction(file_options)
-
-            self.denoising_filters.append(file_options)
 
     def displacer_action(self):
         self.next_action = QAction("&Next", self)
