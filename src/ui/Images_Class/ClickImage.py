@@ -11,7 +11,6 @@ class ClickImage(QLabel):
         super().__init__(parent)
         self.data = data
         self.setFixedSize(size)
-        #self.setMaximumSize(size)
         self.setScaledContents(True)
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.setCursor(Qt.CursorShape.PointingHandCursor)

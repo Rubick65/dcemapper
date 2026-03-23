@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
-from PyQt6.QtCore import pyqtSignal, Qt
-from matplotlib import colormaps
+from PyQt6.QtCore import pyqtSignal
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 
 
