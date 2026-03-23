@@ -4,11 +4,11 @@ from pathlib import Path
 
 import numpy as np
 from PyQt6.QtCore import Qt, QSize, QTimer
-from PyQt6.QtGui import QPixmap, QImage, QKeySequence, QShortcut, QIntValidator, QIcon
-from PyQt6.QtWidgets import QApplication, QMainWindow, QHBoxLayout, QVBoxLayout, QWidget, QScrollArea, QLabel, QSizePolicy, QSlider, QLineEdit
+from PyQt6.QtGui import QIcon
 from PyQt6.QtGui import QPixmap, QImage, QKeySequence, QShortcut, QIntValidator
 from PyQt6.QtWidgets import QApplication, QMainWindow, QHBoxLayout, QVBoxLayout, QWidget, QScrollArea, QLabel, \
     QSizePolicy, QSlider, QLineEdit
+from PyQt6.QtWidgets import QStyleFactory
 from matplotlib.widgets import RectangleSelector, EllipseSelector
 
 from src.io.nifti_io import load_nifti, get_nifti_slices
@@ -40,7 +40,10 @@ class MainWindow(QMainWindow):
         self.current_mask_counter = -1
         self.setWindowTitle("dcemapper")
         self.setMinimumSize(window_minSize)
-        self.resize(1200, 700)
+        self.screen_size = self.screen().availableGeometry() #Window size
+        width = int(self.screen_size.width() * 0.4)
+        height = int(self.screen_size.height() * 0.7)
+        self.resize(width, height)
         self.nifty_path = nifty_path
         self.movie_speed = 100  # miliseconds fps
         self._shortcuts = []
@@ -51,6 +54,9 @@ class MainWindow(QMainWindow):
         self.slider_t_input = None
         self.slider_fps = None
         self.slider_fps_input = None
+        self.input_x = None
+        self.input_y = None
+        self.selector_layout = None
         self.click_pressed = False
         self.record_layout = None
         self.data = None
@@ -94,16 +100,20 @@ class MainWindow(QMainWindow):
         :param nifty_path: Nifti image path
         :return: Creation of the data interface
         """
-
         if nifty_path == "":
             return
 
         self.movie_timer.stop()
 
         if self.canvas:
+            self.canvas.current_z = 0
+            self.canvas.current_t = 0
             self.canvas.close_figure()
             self.canvas.deleteLater()
             self.canvas = None
+
+        if self.slider_t:
+            self.slider_t.setValue(0)
 
         if self.graphic:
             self.graphic.close_graph()
@@ -154,6 +164,13 @@ class MainWindow(QMainWindow):
     def no_clicked(self, event):
         if event.button == 1:
             self.click_pressed = False
+
+    def get_max_coordinates(self):
+        if self.data is not None:
+            width = self.data.shape[0]
+            height = self.data.shape[1]
+            return width - 1, height - 1
+        return 0, 0
 
     def cleanup_shortcuts(self):
         for s in self._shortcuts:
@@ -314,13 +331,8 @@ class MainWindow(QMainWindow):
         vbox.setSpacing(2)
         image_container = ClickImage(image_data, size)
 
-        img = np.real(image_data)
-        # We remove dimensions if we need it
-        while img.ndim > 2:
-            img = img[0]
-
         # We normalize the img data
-        norm_img = self.normalize_img(img)
+        norm_img = self.normalize_img(np.real(image_data))
 
         height, width = norm_img.shape
         bytes_per_line = width
@@ -353,6 +365,16 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout()
         layout.addWidget(self.graphic)
 
+        #Create later
+
+        #max_x, max_y = self.get_max_coordinates()
+
+        #input_x = self.input_label("Coor X",0,max_x,0,self.create_graphic)
+        #input_y = self.input_label("Coor Y",0,max_y,0,self.create_graphic)
+
+        #layout.addLayout(input_x)
+        #layout.addLayout(input_y)
+
         # line to separate the graphic and the record
         line = QWidget()
         line.setFixedHeight(2)
@@ -371,7 +393,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(QLabel("<b>Clicks record:</b>"))
         layout.addWidget(scroll)
 
-        main_container.setMinimumWidth(350)
+        main_container.setMinimumWidth(int(self.screen_size.width() * 0.25))
         # main_container.setWidgetResizable(True)
         main_container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
@@ -440,6 +462,11 @@ class MainWindow(QMainWindow):
         if self.canvas:
             self.canvas.set_t(t_value)
 
+        if self.data is not None:
+            #We update with the T value the images of the selector
+            slices_t = get_nifti_slices(self.data, current_t=t_value)
+            self.update_image_selector(slices_t)
+
     def update_time_from_text(self):
         """
         Updates the slider based on manual text input
@@ -485,8 +512,25 @@ class MainWindow(QMainWindow):
         if self.movie_timer.isActive():
             self.movie_timer.stop()
 
-    def slider_label(self, label_text, min_range, max_range, init_val, slider_callback, text_callback,
-                     stop_movie=False):
+    def input_label(self,input_text,min_range,max_range,init_val,text_callback):
+        input_row_layout = QHBoxLayout()
+
+        label = QLabel(f"<b>{input_text}:</b>")
+        line_edit = QLineEdit(str(init_val))
+        line_edit.setFixedWidth(35)
+        line_edit.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        validator = QIntValidator(min_range, max_range, self)
+        line_edit.setValidator(validator)
+        line_edit.editingFinished.connect(text_callback)
+
+        input_row_layout.addStretch()
+        input_row_layout.addWidget(label)
+        input_row_layout.addWidget(line_edit)
+        input_row_layout.addStretch()
+
+        return input_row_layout
+
+    def slider_label(self, label_text, min_range, max_range, init_val, slider_callback, text_callback,stop_movie=False):
         container_widget = QWidget()
         container_widget.setFixedWidth(selector_minWidth)
         layout = QVBoxLayout(container_widget)
@@ -522,6 +566,34 @@ class MainWindow(QMainWindow):
 
         return container_widget, slider, line_edit
 
+    def update_image_selector(self,images_data):
+        #We clean the selector
+        self.clear_layout(self.selector_layout)
+
+        #For each image in the data, we create a row according to the quantity we specify
+        for i in range(0, len(images_data), amount_image_selector_in_row):
+            row_widget = QWidget()
+            row_layout = QHBoxLayout(row_widget)
+            row_layout.setContentsMargins(0, 0, 0, 0)
+
+            #From the beginning of this row to the indicated amount
+            row_images = images_data[i:i + amount_image_selector_in_row]
+
+            for j, current_image in enumerate(row_images):
+                global_index = i + j
+                image = self.selector_image_creation(current_image, image_in_selector_maxSize, global_index)
+                row_layout.addWidget(image)
+                row_layout.addSpacing(50)
+
+            if len(row_images) < amount_image_selector_in_row:
+                for _ in range(amount_image_selector_in_row - len(row_images)):
+                    spacer = QWidget()
+                    spacer.setFixedSize(image_in_selector_maxSize)
+                    row_layout.addWidget(spacer, 0)
+                    row_layout.addSpacing(50)
+
+            self.selector_layout.addWidget(row_widget)
+
     def image_selector_layout(self, images_data):
         """
         Function to create the image selector layout
@@ -549,36 +621,11 @@ class MainWindow(QMainWindow):
         main_left_layout.addWidget(slider_fps_group)
 
         container = QWidget()
-        selector_layout = QVBoxLayout(container)
-        selector_layout.setSpacing(30)
-        selector_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.selector_layout = QVBoxLayout(container)
+        self.selector_layout.setSpacing(30)
+        self.selector_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        # Creation of rows with images with the amount indicate
-        for i in range(0, len(images_data), amount_image_selector_in_row):
-            row_widget = QWidget()
-            row_layout = QHBoxLayout(row_widget)
-            row_layout.setContentsMargins(0, 0, 0, 0)
-            # We obtein the current images range
-            row_images = images_data[i:i + amount_image_selector_in_row]
-
-            # For each image in the next 3 it will be added to the row
-            for j, current_image in enumerate(row_images):
-                # With the current index image in the row(0,1,2)
-                # We take out the actual slice (Z)
-                global_index = i + j
-                image = self.selector_image_creation(current_image, image_in_selector_maxSize, global_index)
-                row_layout.addWidget(image)
-                row_layout.addSpacing(50)
-
-            # If there are fewer images than we have indicated, we add space
-            if len(row_images) < amount_image_selector_in_row:
-                for _ in range(amount_image_selector_in_row - len(row_images)):
-                    spacer = QWidget()
-                    spacer.setFixedSize(image_in_selector_maxSize)
-                    row_layout.addWidget(spacer, 0)
-                    row_layout.addSpacing(50)
-
-            selector_layout.addWidget(row_widget)
+        self.update_image_selector(images_data)
 
         scroll = QScrollArea()
         scroll.setFixedWidth(selector_minWidth)
@@ -660,12 +707,10 @@ class MainWindow(QMainWindow):
                 self.canvas.draw_idle()
 
         if self.left_container:
-            self.main_layout.removeWidget(self.left_container)
-            self.left_container.setParent(None)
-            self.left_container.deleteLater()
-
-        self.left_container = self.image_selector_layout(np.array(roi_slices_t0))
-        self.main_layout.insertWidget(0, self.left_container)
+            self.update_image_selector(np.array(roi_slices_t0))
+        else:
+            self.left_container = self.image_selector_layout(np.array(roi_slices_t0))
+            self.main_layout.insertWidget(0, self.left_container)
 
         if self.canvas:
             self.canvas.update_image(self.data)
@@ -688,7 +733,9 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     logo_path = os.path.join(name_current_dir,"assets", "logo.png")
     app.setWindowIcon(QIcon(logo_path))
-    window = MainWindow()
+    app.setStyle(QStyleFactory.create("Fusion"))
+    example = "C://Users//hugdp//Desktop//Test_converters//archivos_raquel//prueba_output_hugo//sourcedata//sub-B060326_ses-WTF1_d10_DCE\perf//sub-B060326_ses-WTF1_d10_DCE_acq-10_run-1_dce.nii.gz"
+    window = MainWindow(example)
 
 
     window.show()
