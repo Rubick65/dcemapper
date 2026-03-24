@@ -114,8 +114,11 @@ class MainWindow(QMainWindow):
         if gibbs:
             data = gibbs_remove([data])
 
+        self.data, _ = load_nifti(data)
+        self.toolbar.roi_menu.activate_roi_selection()
 
-        self.set_nifti(data)
+        roi_slices = get_nifti_slices(self.data)
+        self.update_widgets(roi_slices)
 
     def set_various_files(self, nifty_data):
         nifty_path, derivative_folder = nifty_data
@@ -782,9 +785,9 @@ class MainWindow(QMainWindow):
 
         self.data = roi4d_array
 
-        QTimer.singleShot(1, lambda: self.update_widgets(roi4d_array, roi_slices_t0))
+        QTimer.singleShot(1, lambda: self.update_widgets(roi_slices_t0))
 
-    def update_widgets(self, roi4d_images, roi_slices_t0):
+    def update_widgets(self, roi_slices_t0):
         if self.current_roi:
             self.current_roi.set_visible(False)
             if self.canvas:
