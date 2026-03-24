@@ -117,6 +117,8 @@ class MainWindow(QMainWindow):
         if gibbs:
             data = gibbs_remove([data])
 
+        self.nifty_path = data
+
         self.data, _ = load_nifti(data)
         self.toolbar.roi_menu.activate_roi_selection()
 
