@@ -11,12 +11,15 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QHBoxLayout, QVBoxLayout,
 from matplotlib.widgets import RectangleSelector, EllipseSelector
 
 from src.io.nifti_io import load_nifti, get_nifti_slices
+from src.preprocessing.denoise.denoise_filter import denoise_init_one_file
+from src.preprocessing.gibbs_removal.gibbs_removal import gibbs_remove
 from src.roi.roi_creation import create_rectangular_mask, update_elliptical_mask_subtractive, restar_mask
 from src.ui.Images_Class.ClickImage import ClickImage
 from src.ui.Images_Class.IntensityGraph import IntensityGraph
 from src.ui.Images_Class.NiftiCanvas import NiftiCanvas
 from src.ui.file_explorer.file_explorer import TopMenu
 from src.ui.interface.NiftiToolbar import NiftiToolbar
+from src.utils.utils import create_output_folder
 
 # -----------------CONSTANTS-----------------
 window_minSize = QSize(1125, 500)
@@ -64,6 +67,7 @@ class MainWindow(QMainWindow):
         self.full_mask = None
         self.original_data = None
         self.current_subject = None
+        self.derivative_folder = None
         self.movie_timer = QTimer()
         self.movie_timer.timeout.connect(self.next_movie_frame)
 
@@ -78,6 +82,7 @@ class MainWindow(QMainWindow):
         self.setMenuBar(self.top_bar)
         self.top_bar.file_menu.files_signal.connect(self.set_various_files)
         self.top_bar.file_menu.one_file_signal.connect(self.set_nifti)
+        self.top_bar.preprocessing_menu.preprocess_signal.connect(self.preprocessing)
 
         # Main container
         main_widget = QWidget()
@@ -97,10 +102,28 @@ class MainWindow(QMainWindow):
 
         main_widget.setLayout(self.main_layout)
 
-    def set_various_files(self, nifty_path):
+    def preprocessing(self, selected_preprocess_options):
+        denoise_filter, gibbs = selected_preprocess_options
+
+        output_folder = create_output_folder(self.current_subject, self.derivative_folder)
+        data = self.nifty_path
+
+        if denoise_filter:
+            data = denoise_init_one_file(self.nifty_path, output_folder, denoise_filter)
+
+        if gibbs:
+            data = gibbs_remove([data])
+
+
+        self.set_nifti(data)
+
+    def set_various_files(self, nifty_data):
+        nifty_path, derivative_folder = nifty_data
         if isinstance(nifty_path, tuple):
             self.current_subject = nifty_path[0]
             nifty_path = nifty_path[1]
+
+        self.derivative_folder = derivative_folder
 
         self.set_nifti(nifty_path)
 
@@ -114,6 +137,7 @@ class MainWindow(QMainWindow):
             return
 
         self.movie_timer.stop()
+        self.nifty_path = nifty_path
 
         if self.canvas:
             self.canvas.current_z = 0

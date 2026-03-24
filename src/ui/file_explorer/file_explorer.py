@@ -1,3 +1,4 @@
+import os
 import sys
 from pathlib import Path
 
@@ -5,6 +6,7 @@ from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QAction, QActionGroup
 from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QListWidget, QGridLayout, QWidget, \
     QVBoxLayout, QMenuBar, QMenu
+from scipy.differentiate import derivative
 
 from src.io.bruker_conversion import convert_studies_from_bruker
 from src.utils.get_file_to_process import get_files_to_process
@@ -46,7 +48,7 @@ class PersistentMenu(NonePersistentMenu):
 
 
 class PreprocessingMenu(PersistentMenu):
-    preprocess_signal = pyqtSignal()
+    preprocess_signal = pyqtSignal(tuple)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -96,10 +98,11 @@ class PreprocessingMenu(PersistentMenu):
     def get_preprocessing_options(self):
 
         denoise_options = self.denoise_menu.group.actions()
+        denoise_selected_option = None
         gibbs = None
         for option in denoise_options:
             if option.isChecked():
-                denoise_options = option.text()
+                denoise_selected_option = option.text()
                 break
 
         if self.gibbs_artifact_suppression.isChecked():
@@ -108,10 +111,7 @@ class PreprocessingMenu(PersistentMenu):
         if not denoise_options and not gibbs:
             return
 
-        self.preprocessing(denoise_options, gibbs)
-
-    def preprocessing(self, denoise_options, gibbs):
-        print(f"{denoise_options}: {gibbs}")
+        self.preprocess_signal.emit((denoise_selected_option, gibbs))
 
     def check_preprocessing_condition(self):
 
@@ -185,6 +185,7 @@ class FileMenu(PersistentMenu):
         self.file_list = []
         self.current_file_counter = 0
         self.next_action = None
+        self.derivative_folder = None
         self.previous_action = None
         self.initMenu()
 
@@ -259,13 +260,14 @@ class FileMenu(PersistentMenu):
             raise ValueError()
 
     def different_file_options(self, selected_option):
+        derivative_folder = None
         self.file_list = []
         self.current_file_counter = 0
         try:
             match selected_option:
                 case "bi":
                     path = self.file_selector()
-                    files_to_process = get_files_to_process(path[0])
+                    files_to_process, derivative_folder = get_files_to_process(path[0])
 
                     self.get_list_of_files_to_process(files_to_process)
 
@@ -273,13 +275,15 @@ class FileMenu(PersistentMenu):
                     f = self.file_selector(directory=False)
                     self.one_file_signal.emit(f[0])
 
+                    derivative_folder = str(Path(f[0]).parent)
+
                 case "br":
                     path = self.file_selector()
                     input_path = path[0]
                     output_path = Path(input_path).parent
 
                     convert_studies_from_bruker(input_path, output_path)
-                    files_to_process = get_files_to_process(output_path)
+                    files_to_process, derivative_folder = get_files_to_process(output_path)
 
                     self.get_list_of_files_to_process(files_to_process)
 
@@ -288,7 +292,8 @@ class FileMenu(PersistentMenu):
 
         if self.file_list:
             self.activate_next_action()
-            self.files_signal.emit(self.file_list[0])
+            self.derivative_folder = str(derivative_folder)
+            self.files_signal.emit((self.file_list[0], self.derivative_folder))
 
     def get_list_of_files_to_process(self, files_to_process):
         for file, archive in files_to_process.items():
@@ -306,7 +311,7 @@ class FileMenu(PersistentMenu):
         if self.current_file_counter == len(self.file_list) - 1:
             self.next_action.setEnabled(False)
 
-        self.files_signal.emit(self.file_list[self.current_file_counter])
+        self.files_signal.emit((self.file_list[self.current_file_counter], self.derivative_folder))
 
         if self.current_file_counter >= 0:
             self.previous_action.setEnabled(True)
@@ -317,7 +322,7 @@ class FileMenu(PersistentMenu):
         if self.current_file_counter == 0:
             self.previous_action.setEnabled(False)
 
-        self.files_signal.emit(self.file_list[self.current_file_counter])
+        self.files_signal.emit((self.file_list[self.current_file_counter], self.derivative_folder))
 
         if self.current_file_counter < len(self.file_list) - 1:
             self.next_action.setEnabled(True)
