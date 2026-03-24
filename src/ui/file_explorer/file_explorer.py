@@ -240,10 +240,10 @@ class FileMenu(PersistentMenu):
             # Only shows existing files
             dialog.setFileMode(QFileDialog.FileMode.Directory)
         else:
+            dialog.setNameFilter("(*.nii.gz *.nii)")
             dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
 
         # Filter only for indicated files
-        # dialog.setNameFilter("('.nii.gz', '.nii')")
         # Detailed mode
         dialog.setViewMode(QFileDialog.ViewMode.Detail)
 
@@ -344,6 +344,11 @@ class TopMenu(QMenuBar):
         # Preprocessing menu section
         self.addMenu(self.preprocessing_menu)
 
+    def deactivate(self):
+        self.preprocessing_menu.setEnabled(False)
+
+    def activate(self):
+        self.preprocessing_menu.setEnabled(True)
 
 class FileListWidget(QListWidget):
 

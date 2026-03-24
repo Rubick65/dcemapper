@@ -12,6 +12,10 @@ def get_files_to_process(main_path):
     # Dict for file to process
     files_to_process = {}
 
+    # If sourcedata does not exist or is not a directory
+    if not source_data_folder.exists() or not source_data_folder.is_dir():
+        return files_to_process
+
     # for every study in the folder
     for study_path in filter(is_folder_and_not_occult, source_data_folder.iterdir()):
         acqs = []
@@ -28,6 +32,10 @@ def get_files_to_process(main_path):
         if acqs:
             # Add list of valid files to de dict
             files_to_process[study_path.name] = list(set(acqs))
+
+    # If the sourcedata folder exists but still does not contain valid files
+    if not files_to_process:
+        return {}
 
     # If derivatives folder dont exists
     if not derivatives_folder.exists():

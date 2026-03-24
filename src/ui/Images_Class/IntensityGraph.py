@@ -8,6 +8,8 @@ class IntensityGraph(FigureCanvas):
         self.axes.set_title('Intensity graph')
         self.axes.set_xlabel("Time point (T)")
         self.axes.set_ylabel("Intensity")
+        self.axes.yaxis.set_label_coords(-0.15, 0.5)
+        self.axes.xaxis.set_label_coords(0.5, -0.10)
         self.line, = self.axes.plot([], [], marker='o', color='b', markersize=4)
         self.fig.tight_layout() #We prepare the graphic
 
