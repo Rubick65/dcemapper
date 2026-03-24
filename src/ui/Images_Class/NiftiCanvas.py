@@ -9,18 +9,19 @@ class NiftiCanvas(FigureCanvas):
     """
     z_changed = pyqtSignal(int)
 
-    def __init__(self, np_array):
+    def __init__(self, np_array,subject_name):
         self.fig, self.axes = plt.subplots()
         self.axes.axis('off')  # Remove the axis numbers
         super().__init__(self.fig)
 
         self.data = np_array
+        self.subject_name = subject_name
         self.cmap = 'gray'  # Color map, by default in black and white colors
         self.current_z = 0  # Current slide
         self.current_t = 0  # Current time
 
-        self.slice_text = self.fig.text(0.5, 1,
-                                        f"Slice: {self.current_z}",
+        self.slice_text = self.fig.text(0.25, 1,
+                                        f"Slice: {self.current_z + 1}",
                                         transform=self.axes.transAxes,
                                         color='white',
                                         fontsize=15,
@@ -29,15 +30,15 @@ class NiftiCanvas(FigureCanvas):
                                         va='top'
                                         )
 
-        # self.cmap_text = self.fig.text(0.5, -0.25,
-        #                                f"Colormap: {self.cmap}",
-        #                                transform=self.axes.transAxes,
-        #                                color='white',
-        #                                fontsize=15,
-        #                                family = "Georgia",
-        #                                ha='center',
-        #                                va='bottom'
-        #                                )
+        self.subject_text = self.fig.text(0.5, -0.10,
+                                       f"Subject: {self.subject_name}",
+                                       transform=self.axes.transAxes,
+                                       color='white',
+                                       fontsize=15,
+                                       family = "Georgia",
+                                       ha='center',
+                                       va='bottom'
+                                       )
 
         self.max_z = self.data.shape[2] - 1  # Max number of slides in np array
         self.max_t = self.data.shape[3] - 1  # Max number of seconds in np array
@@ -46,6 +47,16 @@ class NiftiCanvas(FigureCanvas):
 
         # Image of the np array
         self.img_slice = self.axes.imshow(self.current_slice, cmap=self.cmap)
+
+        self.cmap_text = self.fig.text(0.75, 1,
+                                       f"Cmap: {self.img_slice.get_cmap().name}",
+                                       transform=self.axes.transAxes,
+                                       color='white',
+                                       fontsize=15,
+                                       family = "Georgia",
+                                       ha='center',
+                                       va='top'
+                                       )
 
         # Event click in the matplotlib image
         self.mpl_connect('button_press_event', self._on_click)
@@ -81,12 +92,20 @@ class NiftiCanvas(FigureCanvas):
         self.load_image()
         self.z_changed.emit(self.current_z)
 
+    def draw(self):
+        if hasattr(self, 'img_slice') and hasattr(self, 'cmap_text'):
+            new_name = self.img_slice.get_cmap().name
+            self.cmap_text.set_text(f"Cmap: {new_name}")
+
+        super().draw()
+
     def load_image(self):
         """
         Function to load/reload the image
         """
         self.current_slice = self.data[:, :, self.current_z, self.current_t].T  # We update de slice with the changes
-        self.slice_text.set_text(f"Slice: {self.current_z}")
+        self.slice_text.set_text(f"Slice: {self.current_z + 1}")
+        #self.subject_text.set_text(f"Subject: {self.subject_name}")
         self.img_slice.set_data(self.current_slice)
         self.draw()
 
