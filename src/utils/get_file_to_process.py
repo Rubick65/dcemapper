@@ -42,7 +42,7 @@ def get_files_to_process(main_path):
         # Create derivatives folder
         derivatives_folder.mkdir()
         # Returns all the files to process
-        return files_to_process
+        return files_to_process, derivatives_folder
 
     # For every study
     for derivative_path in filter(is_folder_and_not_occult, derivatives_folder.iterdir()):
@@ -53,7 +53,7 @@ def get_files_to_process(main_path):
             # Delete those files to process
             del files_to_process[folder_name]
 
-    return files_to_process
+    return files_to_process, derivatives_folder
 
 
 def get_correct_file(sub):

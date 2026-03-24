@@ -1,3 +1,4 @@
+import os
 import sys
 from pathlib import Path
 
@@ -5,10 +6,11 @@ from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QAction, QActionGroup
 from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QListWidget, QGridLayout, QWidget, \
     QVBoxLayout, QMenuBar, QMenu
+from scipy.differentiate import derivative
 
-from src.utils.misc import denoise_filters_dict, file_options_dict
-from src.utils.get_file_to_process import get_files_to_process
 from src.io.bruker_conversion import convert_studies_from_bruker
+from src.utils.get_file_to_process import get_files_to_process
+from src.utils.misc import denoise_filters_dict, file_options_dict
 
 
 class NonePersistentMenu(QMenu):
@@ -46,19 +48,21 @@ class PersistentMenu(NonePersistentMenu):
 
 
 class PreprocessingMenu(PersistentMenu):
+    preprocess_signal = pyqtSignal(tuple)
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.gibbs_artifact_suppression = None
+        self.denoise_menu = None
+        self.preprocessing_action = None
         self.create_preprocessing_menu()
+        self.triggered.connect(self.check_preprocessing_condition)
 
     def create_preprocessing_menu(self):
         """
         Creates preprocessing menu section
         :return: None
         """
-
-        # Create preprocessing actions
-
         # Create preprocessing menu
         self.setTitle("&Preprocessing")
         # Tracks mouse
@@ -70,18 +74,71 @@ class PreprocessingMenu(PersistentMenu):
         Creates preprocessing actions
         :returns a tuple with all the preprocessing actions
         """
-        denoise_menu = DenoiseMenu(self)
-        self.addMenu(denoise_menu)
+        self.denoise_menu = DenoiseMenu(self)
+        self.addMenu(self.denoise_menu)
 
         # Gibbs artifact suppression
-        gibbs_artifact_suppression = QAction("&Gibbs artifact suppression", self)
-        gibbs_artifact_suppression.setStatusTip("Gibbs artifact suppression")
-        gibbs_artifact_suppression.setCheckable(True)
+        self.gibbs_artifact_suppression = QAction("&Gibbs artifact suppression", self)
+        self.gibbs_artifact_suppression.setStatusTip("Gibbs artifact suppression")
+        self.gibbs_artifact_suppression.setCheckable(True)
 
-        self.addAction(gibbs_artifact_suppression)
+        self.addAction(self.gibbs_artifact_suppression)
+        self.create_preprocessing_action()
+
+    def create_preprocessing_action(self):
+        self.preprocessing_action = QAction("&Preprocess", self)
+        self.preprocessing_action.setStatusTip("Start preprocessing")
+
+        self.preprocessing_action.setCheckable(False)
+        self.preprocessing_action.setEnabled(False)
+        self.preprocessing_action.triggered.connect(self.get_preprocessing_options)
+
+        self.addAction(self.preprocessing_action)
+
+    def get_preprocessing_options(self):
+
+        denoise_options = self.denoise_menu.group.actions()
+        denoise_selected_option = None
+        gibbs = None
+        for option in denoise_options:
+            if option.isChecked():
+                denoise_selected_option = option.text()
+                break
+
+        if self.gibbs_artifact_suppression.isChecked():
+            gibbs = self.gibbs_artifact_suppression.text()
+
+        if not denoise_options and not gibbs:
+            return
+
+        self.preprocess_signal.emit((denoise_selected_option, gibbs))
+
+    def check_preprocessing_condition(self):
+
+        actions = self.actions()
+        activate_preprocess = self.check_preprocessing_actions(actions)
+
+        self.preprocessing_action.setEnabled(activate_preprocess)
+
+    def check_preprocessing_actions(self, actions):
+
+        preprocess = False
+        for action in actions:
+            submenu = action.menu()
+
+            if submenu is not None and isinstance(submenu, QMenu):
+                sub_actions = submenu.actions()
+                preprocess = self.check_preprocessing_actions(sub_actions)
+            else:
+                if action.isChecked():
+                    preprocess = True
+                    break
+
+        return preprocess
 
 
 class DenoiseMenu(PersistentMenu):
+    activate_preprocess_signal = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -107,6 +164,7 @@ class DenoiseMenu(PersistentMenu):
             self.denoising_filters.append(denoising_filter)
 
     def handle_exclusivity(self, selected_action):
+
         if selected_action.isChecked():
             for action in self.group.actions():
                 if action is not selected_action:
@@ -117,7 +175,7 @@ class FileMenu(PersistentMenu):
     # Signal for the selected files
     files_signal = pyqtSignal(tuple)
 
-    one_file_signal = pyqtSignal(str)
+    one_file_signal = pyqtSignal(tuple)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -127,6 +185,7 @@ class FileMenu(PersistentMenu):
         self.file_list = []
         self.current_file_counter = 0
         self.next_action = None
+        self.derivative_folder = None
         self.previous_action = None
         self.initMenu()
 
@@ -144,8 +203,6 @@ class FileMenu(PersistentMenu):
 
             self.group.addAction(file_options)
             self.addAction(file_options)
-
-            self.denoising_filters.append(file_options)
 
     def displacer_action(self):
         self.next_action = QAction("&Next", self)
@@ -203,19 +260,22 @@ class FileMenu(PersistentMenu):
             raise ValueError()
 
     def different_file_options(self, selected_option):
+        derivative_folder = None
         self.file_list = []
         self.current_file_counter = 0
         try:
             match selected_option:
                 case "bi":
                     path = self.file_selector()
-                    files_to_process = get_files_to_process(path[0])
+                    files_to_process, derivative_folder = get_files_to_process(path[0])
 
                     self.get_list_of_files_to_process(files_to_process)
 
                 case "ni":
                     f = self.file_selector(directory=False)
-                    self.one_file_signal.emit(f[0])
+
+                    derivative_folder = str(Path(f[0]).parent)
+                    self.one_file_signal.emit((f[0], derivative_folder))
 
                 case "br":
                     path = self.file_selector()
@@ -223,7 +283,7 @@ class FileMenu(PersistentMenu):
                     output_path = Path(input_path).parent
 
                     convert_studies_from_bruker(input_path, output_path)
-                    files_to_process = get_files_to_process(output_path)
+                    files_to_process, derivative_folder = get_files_to_process(output_path)
 
                     self.get_list_of_files_to_process(files_to_process)
 
@@ -232,7 +292,8 @@ class FileMenu(PersistentMenu):
 
         if self.file_list:
             self.activate_next_action()
-            self.files_signal.emit(self.file_list[0])
+            self.derivative_folder = str(derivative_folder)
+            self.files_signal.emit((self.file_list[0], self.derivative_folder))
 
     def get_list_of_files_to_process(self, files_to_process):
         for file, archive in files_to_process.items():
@@ -250,7 +311,7 @@ class FileMenu(PersistentMenu):
         if self.current_file_counter == len(self.file_list) - 1:
             self.next_action.setEnabled(False)
 
-        self.files_signal.emit(self.file_list[self.current_file_counter])
+        self.files_signal.emit((self.file_list[self.current_file_counter], self.derivative_folder))
 
         if self.current_file_counter >= 0:
             self.previous_action.setEnabled(True)
@@ -261,7 +322,7 @@ class FileMenu(PersistentMenu):
         if self.current_file_counter == 0:
             self.previous_action.setEnabled(False)
 
-        self.files_signal.emit(self.file_list[self.current_file_counter])
+        self.files_signal.emit((self.file_list[self.current_file_counter], self.derivative_folder))
 
         if self.current_file_counter < len(self.file_list) - 1:
             self.next_action.setEnabled(True)

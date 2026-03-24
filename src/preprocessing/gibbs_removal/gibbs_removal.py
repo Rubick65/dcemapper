@@ -21,6 +21,7 @@ def gibbs_remove(processing_filenames_list):
             )
             if corrected_filename != nifti_filename:
                 processing_filenames_list[i] = corrected_filename
+    return processing_filenames_list[0]
 
 
 def gibbs_suppress(nifti_file_path, unringed_nii_output_path=None, check_params=True):

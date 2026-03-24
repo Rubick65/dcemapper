@@ -16,12 +16,24 @@ from src.io.nifti_io import load_nifti
 from src.utils.utils import create_general_preprocess_output, rename_associated_files, info_and_ask_denoising_params
 
 
-def denoise_init(nifti_filename_list, study_acq_derivatives_dir, processing_filenames_list):
+def denoise_init_one_file(nifti_filename, study_acq_derivatives_dir, selected_filter):
+    params, denoised_nii_output_path, selected_filter = denoise(
+        nifti_filename,
+        study_acq_derivatives_dir,
+        params=None,
+        selected_filter=selected_filter,
+    )
+    processing_filename = denoised_nii_output_path
+
+    return processing_filename
+
+
+def denoise_init(nifti_filename_list, study_acq_derivatives_dir, processing_filenames_list, selected_filter):
     params, denoised_nii_output_path, selected_filter = denoise(
         nifti_filename_list[0],
         study_acq_derivatives_dir,
         params=None,
-        selected_filter=None,
+        selected_filter=selected_filter,
     )
     processing_filenames_list[0] = denoised_nii_output_path
 
@@ -59,38 +71,37 @@ def denoise(
     process_again = True
 
     while process_again:
+        params = None
         original_image, study_nii = load_nifti(nifti_file_path)
-        selected_filter = "d"
 
         denoised_image, params = denoise_options(original_image, params, check_params, nifti_file_path, selected_filter)
 
         if check_params:
             process_again = create_general_preprocess_output(original_image, denoised_image, "Denoised")
         else:
-            save = True
             process_again = False
 
         if not process_again:
-            if save:
-                nii_ima = nib.Nifti1Image(
-                    denoised_image, study_nii.affine, study_nii.header
-                )
-                denoised_nii_name = os.path.basename(nifti_file_path).replace(
-                    ".nii.gz", "_preproc.nii.gz"
-                )
-                denoised_nii_output_path = os.path.join(
-                    output_folder, denoised_nii_name
-                )
-                nib.save(nii_ima, denoised_nii_output_path)
-                rename_associated_files(denoised_nii_output_path)
-            else:
-                denoised_nii_output_path = nifti_file_path
+
+            nii_ima = nib.Nifti1Image(
+                denoised_image, study_nii.affine, study_nii.header
+            )
+            denoised_nii_name = os.path.basename(nifti_file_path).replace(
+                ".nii.gz", "_preproc.nii.gz"
+            )
+            denoised_nii_output_path = os.path.join(
+                output_folder, denoised_nii_name
+            )
+            nib.save(nii_ima, denoised_nii_output_path)
+            rename_associated_files(denoised_nii_output_path)
         else:
-            params = None
+            denoised_nii_output_path = nifti_file_path
+
     return params, denoised_nii_output_path, selected_filter
 
 
 def denoise_options(original_image, params, check_params, nifti_file_path, selected_filter):
+    selected_filter = get_selected_filter(selected_filter)
     match selected_filter:
         case "n":
             denoised_image, params = non_local_means_denoising(
@@ -124,6 +135,13 @@ def denoise_options(original_image, params, check_params, nifti_file_path, selec
                 original_image, params, check_params=check_params
             )
     return denoised_image, params
+
+
+def get_selected_filter(selected_filter):
+    if "dipy" in selected_filter:
+        return "d"
+
+    return selected_filter[1:2].lower()
 
 
 def non_local_means_denoising(image, params=None, check_params=True):

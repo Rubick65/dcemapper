@@ -17,7 +17,6 @@ def load_nifti(path: str):
 
     # Get´s image nifti data in numpy array
     data = img.get_fdata()
-    print(data)
 
     return data, img
 

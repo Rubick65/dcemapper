@@ -14,9 +14,9 @@ file_options_dict = {
     "&Open Bruker File": "Converts from Bruker to NIfTI format",
 }
 denoise_filters = [
-    "&Non local means skimage",
-    "&Non local means skimage dipy's",
-    "&Adaptative Soft Coefficient Matching"
+    "Non local means skimage",
+    "Non local means skimage dipy's",
+    "Adaptative Soft Coefficient Matching"
 ]
 
 roi_actions_dict = {

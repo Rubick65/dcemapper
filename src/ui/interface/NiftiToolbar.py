@@ -6,6 +6,7 @@ from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as Navigation
 from src.ui.Images_Class.NiftiCanvas import NiftiCanvas
 from src.utils.misc import roi_actions_dict
 
+
 class RoiMenu(QMenu):
     selected_text_signal = pyqtSignal(str)
 
@@ -24,9 +25,11 @@ class RoiMenu(QMenu):
             denoising_filter = QAction(roi, self)
             denoising_filter.setStatusTip(tip)
             denoising_filter.setCheckable(True)
+            denoising_filter.setEnabled(False)
 
             self.group.addAction(denoising_filter)
             self.addAction(denoising_filter)
+
 
     def handle_exclusivity(self, selected_action: QAction):
         if not selected_action.isChecked():
@@ -37,6 +40,19 @@ class RoiMenu(QMenu):
                 action.setChecked(False)
 
         self.selected_text_signal.emit(selected_action.text()[0: 1].lower())
+
+    def activate_roi_selection(self):
+        # 2. Verificamos que el grupo tenga las acciones
+        actions = self.group.actions()
+        if not actions:
+            # Si el grupo está vacío, búscalas en el menú directamente
+            actions = self.actions()
+
+        for action in actions:
+            action.setEnabled(True)
+
+        # 3. Forzamos a Qt a que actualice el aspecto visual
+        self.update()
 
 
 class NiftiToolbar(NavigationToolbar):

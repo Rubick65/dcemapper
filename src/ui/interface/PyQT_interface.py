@@ -11,12 +11,15 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QHBoxLayout, QVBoxLayout,
 from matplotlib.widgets import RectangleSelector, EllipseSelector
 
 from src.io.nifti_io import load_nifti, get_nifti_slices
+from src.preprocessing.denoise.denoise_filter import denoise_init_one_file
+from src.preprocessing.gibbs_removal.gibbs_removal import gibbs_remove
 from src.roi.roi_creation import create_rectangular_mask, update_elliptical_mask_subtractive, restar_mask
 from src.ui.Images_Class.ClickImage import ClickImage
 from src.ui.Images_Class.IntensityGraph import IntensityGraph
 from src.ui.Images_Class.NiftiCanvas import NiftiCanvas
 from src.ui.file_explorer.file_explorer import TopMenu
 from src.ui.interface.NiftiToolbar import NiftiToolbar
+from src.utils.utils import create_output_folder
 
 # -----------------CONSTANTS-----------------
 window_minSize = QSize(1125, 500)
@@ -64,6 +67,7 @@ class MainWindow(QMainWindow):
         self.full_mask = None
         self.original_data = None
         self.current_subject = None
+        self.derivative_folder = None
         self.movie_timer = QTimer()
         self.movie_timer.timeout.connect(self.next_movie_frame)
 
@@ -80,7 +84,8 @@ class MainWindow(QMainWindow):
         self.top_bar.deactivate()
         self.setMenuBar(self.top_bar)
         self.top_bar.file_menu.files_signal.connect(self.set_various_files)
-        self.top_bar.file_menu.one_file_signal.connect(self.set_one_file)
+        self.top_bar.file_menu.one_file_signal.connect(self.set_various_files)
+        self.top_bar.preprocessing_menu.preprocess_signal.connect(self.preprocessing)
 
         # Main container
         main_widget = QWidget()
@@ -99,6 +104,25 @@ class MainWindow(QMainWindow):
 
         main_widget.setLayout(self.main_layout)
 
+    def preprocessing(self, selected_preprocess_options):
+        denoise_filter, gibbs = selected_preprocess_options
+
+        output_folder = create_output_folder(self.current_subject if self.current_subject else "Unknown",
+                                             self.derivative_folder)
+        data = self.nifty_path
+
+        if denoise_filter:
+            data = denoise_init_one_file(self.nifty_path, output_folder, denoise_filter)
+
+        if gibbs:
+            data = gibbs_remove([data])
+
+        self.data, _ = load_nifti(data)
+        self.toolbar.roi_menu.activate_roi_selection()
+
+        roi_slices = get_nifti_slices(self.data)
+        self.update_widgets(roi_slices)
+        
     def set_one_file(self,nifty_path):
         if nifty_path:
             path_obj = Path(nifty_path)
@@ -106,10 +130,13 @@ class MainWindow(QMainWindow):
             self.current_subject = path_obj.parent.parent.name
             self.set_nifti(nifty_path)
 
-    def set_various_files(self, nifty_path):
+    def set_various_files(self, nifty_data):
+        nifty_path, derivative_folder = nifty_data
         if isinstance(nifty_path, tuple):
             self.current_subject = nifty_path[0] #Name of the subject
             nifty_path = nifty_path[1]
+
+        self.derivative_folder = derivative_folder
 
         self.set_nifti(nifty_path)
 
@@ -123,6 +150,7 @@ class MainWindow(QMainWindow):
             return
 
         self.movie_timer.stop()
+        self.nifty_path = nifty_path
         self.movie_speed = 30
 
         if self.canvas:
@@ -472,11 +500,16 @@ class MainWindow(QMainWindow):
         layout.addWidget(QLabel("<b>Clicks record:</b>"))
         layout.addWidget(scroll)
 
-        container.setMinimumWidth(int(self.screen_size.width() * 0.30))
-        container.setMinimumHeight(int(self.screen_size.height() * 0.25))
+        container.setMinimumWidth(int(self.screen_size.width() * 0.25))
+        container.setMinimumHeight(
+            int(self.screen_size.height() * 0.25))  # Test needing !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        # main_container.setWidgetResizable(True)
         container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
+        # To prevent it from taking focus from the keyboard when it is clicked
+        # main_container.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         container.setLayout(layout)
+
         container.setObjectName("graphic")
 
         return container
@@ -505,6 +538,7 @@ class MainWindow(QMainWindow):
 
         container = QWidget()
         container.setMinimumSize(main_image_minSize)
+        container.setMaximumWidth(int(self.screen_size.width() * 0.45))
         container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         container.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
@@ -618,7 +652,8 @@ class MainWindow(QMainWindow):
 
         return input_row_layout, line_edit
 
-    def slider_label(self, label_text, min_range, max_range, init_val, slider_callback, text_callback,stop_movie=False):
+    def slider_label(self, label_text, min_range, max_range, init_val, slider_callback, text_callback,
+                     stop_movie=False):
         container_widget = QWidget()
         container_widget.setMinimumWidth(selector_minWidth)
         layout = QVBoxLayout(container_widget)
@@ -796,9 +831,9 @@ class MainWindow(QMainWindow):
 
         self.data = roi4d_array
 
-        QTimer.singleShot(1, lambda: self.update_widgets(roi4d_array, roi_slices_t0))
+        QTimer.singleShot(1, lambda: self.update_widgets(roi_slices_t0))
 
-    def update_widgets(self, roi4d_images, roi_slices_t0):
+    def update_widgets(self, roi_slices_t0):
         if self.current_roi:
             self.current_roi.set_visible(False)
             if self.canvas:
