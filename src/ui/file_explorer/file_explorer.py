@@ -175,7 +175,7 @@ class FileMenu(PersistentMenu):
     # Signal for the selected files
     files_signal = pyqtSignal(tuple)
 
-    one_file_signal = pyqtSignal(str)
+    one_file_signal = pyqtSignal(tuple)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -273,9 +273,9 @@ class FileMenu(PersistentMenu):
 
                 case "ni":
                     f = self.file_selector(directory=False)
-                    self.one_file_signal.emit(f[0])
 
                     derivative_folder = str(Path(f[0]).parent)
+                    self.one_file_signal.emit((f[0], derivative_folder))
 
                 case "br":
                     path = self.file_selector()

@@ -81,7 +81,7 @@ class MainWindow(QMainWindow):
         self.top_bar = TopMenu()
         self.setMenuBar(self.top_bar)
         self.top_bar.file_menu.files_signal.connect(self.set_various_files)
-        self.top_bar.file_menu.one_file_signal.connect(self.set_nifti)
+        self.top_bar.file_menu.one_file_signal.connect(self.set_various_files)
         self.top_bar.preprocessing_menu.preprocess_signal.connect(self.preprocessing)
 
         # Main container
@@ -105,7 +105,8 @@ class MainWindow(QMainWindow):
     def preprocessing(self, selected_preprocess_options):
         denoise_filter, gibbs = selected_preprocess_options
 
-        output_folder = create_output_folder(self.current_subject, self.derivative_folder)
+        output_folder = create_output_folder(self.current_subject if self.current_subject else "Unknown",
+                                             self.derivative_folder)
         data = self.nifty_path
 
         if denoise_filter:
