@@ -7,7 +7,7 @@ from PyQt6.QtCore import Qt, QSize, QTimer
 from PyQt6.QtGui import QIcon
 from PyQt6.QtGui import QPixmap, QImage, QKeySequence, QShortcut, QIntValidator
 from PyQt6.QtWidgets import QApplication, QMainWindow, QHBoxLayout, QVBoxLayout, QWidget, QScrollArea, QLabel, \
-    QSizePolicy, QSlider, QLineEdit
+    QSizePolicy, QSlider, QLineEdit, QSplitter
 from matplotlib.widgets import RectangleSelector, EllipseSelector
 
 from src.io.nifti_io import load_nifti, get_nifti_slices
@@ -30,6 +30,7 @@ main_image_minSize = QSize(400, 400)
 
 name_current_dir = os.path.dirname(os.path.abspath(__file__))
 
+
 class MainWindow(QMainWindow):
     def __init__(self, nifty_path=None):
         super().__init__()
@@ -38,12 +39,12 @@ class MainWindow(QMainWindow):
         self.current_mask_counter = -1
         self.setWindowTitle("dcemapper")
         self.setMinimumSize(window_minSize)
-        self.screen_size = self.screen().availableGeometry() #Window size
+        self.screen_size = self.screen().availableGeometry()  # Window size
         width = int(self.screen_size.width() * 0.4)
         height = int(self.screen_size.height() * 0.7)
         self.resize(width, height)
         self.nifty_path = nifty_path
-        self.movie_speed = 100  # miliseconds fps
+        self.movie_speed = 30  # miliseconds fps
         self._shortcuts = []
         self.graphic = None
         self.canvas = None
@@ -70,13 +71,16 @@ class MainWindow(QMainWindow):
         self.mid_container = None
         self.right_container = None
 
+        self.main_splitter = None
+
         self.current_roi = None
         self.roi_selector_list = []
         self.selected_roi = ""
         self.top_bar = TopMenu()
+        self.top_bar.deactivate()
         self.setMenuBar(self.top_bar)
         self.top_bar.file_menu.files_signal.connect(self.set_various_files)
-        self.top_bar.file_menu.one_file_signal.connect(self.set_nifti)
+        self.top_bar.file_menu.one_file_signal.connect(self.set_one_file)
 
         # Main container
         main_widget = QWidget()
@@ -84,8 +88,7 @@ class MainWindow(QMainWindow):
         # Fill all the window
         self.setCentralWidget(main_widget)
 
-        # Horizontal layout of widget to position other widgets
-        # Horizontal layout of widget to position other widgets
+        # Horizontal layout of widget to position the splitter
         self.main_layout = QHBoxLayout(main_widget)
 
         if self.nifty_path:
@@ -96,9 +99,16 @@ class MainWindow(QMainWindow):
 
         main_widget.setLayout(self.main_layout)
 
+    def set_one_file(self,nifty_path):
+        if nifty_path:
+            path_obj = Path(nifty_path)
+
+            self.current_subject = path_obj.parent.parent.name
+            self.set_nifti(nifty_path)
+
     def set_various_files(self, nifty_path):
         if isinstance(nifty_path, tuple):
-            self.current_subject = nifty_path[0]
+            self.current_subject = nifty_path[0] #Name of the subject
             nifty_path = nifty_path[1]
 
         self.set_nifti(nifty_path)
@@ -113,10 +123,12 @@ class MainWindow(QMainWindow):
             return
 
         self.movie_timer.stop()
+        self.movie_speed = 30
 
         if self.canvas:
             self.canvas.current_z = 0
             self.canvas.current_t = 0
+            self.canvas.subject_text = None
             self.canvas.close_figure()
             self.canvas.deleteLater()
             self.canvas = None
@@ -148,14 +160,28 @@ class MainWindow(QMainWindow):
         # We clean the layout
         self.clear_layout(self.main_layout)
 
+        #Splitter to drag the mid and right containers sizes
+        self.main_splitter = QSplitter(Qt.Orientation.Horizontal)
+
         # Create all the containers
         self.left_container = self.image_selector_layout(get_nifti_slices(self.data))
-        self.mid_container = self.main_image_layout(self.data)
+        self.mid_container = self.main_image_layout(self.data,self.current_subject)
         self.right_container = self.graphic_layout()
 
         self.main_layout.addWidget(self.left_container)
-        self.main_layout.addWidget(self.mid_container)
-        self.main_layout.addWidget(self.right_container)
+        self.main_splitter.addWidget(self.mid_container)
+        self.main_splitter.addWidget(self.right_container)
+
+        #To prevent that the containers collapse each to other
+        self.main_splitter.setCollapsible(0, False)
+        self.main_splitter.setCollapsible(1, False)
+
+        total_w = self.width()
+        #Sizes of splitter containers (mid,right)
+        self.main_splitter.setSizes([int(total_w * 0.6), int(total_w * 0.4)])
+
+        self.main_layout.addWidget(self.main_splitter)
+        self.top_bar.activate()
 
         self.setFocus()
         self.init_shortcuts()
@@ -194,11 +220,35 @@ class MainWindow(QMainWindow):
             s.deleteLater()
         self._shortcuts.clear()
 
+    def update_time_from_up_key(self):
+        if self.canvas is None or self.data is None:
+            return
+
+        current_t = self.canvas.current_t
+        if current_t < self.canvas.max_t:
+            if self.movie_timer.isActive():
+                self.movie_timer.stop()
+            next_t = current_t + 1
+            self.slider_t.setValue(next_t)
+
+    def update_time_from_down_key(self):
+        if self.canvas is None or self.data is None:
+            return
+
+        current_t = self.canvas.current_t
+        if current_t > 0:
+            if self.movie_timer.isActive():
+                self.movie_timer.stop()
+            next_t = current_t - 1
+            self.slider_t.setValue(next_t)
+
     def init_shortcuts(self):
         self.cleanup_shortcuts()
         shortcuts = {
             Qt.Key.Key_Left: self.toolbar.go_back,
             Qt.Key.Key_Right: self.toolbar.go_forward,
+            Qt.Key.Key_Up: self.update_time_from_up_key,
+            Qt.Key.Key_Down: self.update_time_from_down_key,
             Qt.Key.Key_Space: self.toggle_movie_mode,
             Qt.Key.Key_H: self.toolbar.home,
             Qt.Key.Key_Comma: self.toolbar.back,
@@ -270,8 +320,7 @@ class MainWindow(QMainWindow):
             self.showFullScreen()
 
     def add_to_record(self, x, y, z, intensitis_t):
-        intensity_increase = ((intensitis_t[-1] - intensitis_t[0]) / intensitis_t[0] * 100) if intensitis_t[
-                                                                                                   0] != 0 else 0
+        intensity_increase = ((intensitis_t[-1] - intensitis_t[0]) / intensitis_t[0] * 100) if intensitis_t[0] != 0 else 0
         info = f"Click = {self.record_layout.count() + 1} | X = {x} | Y = {y} | Z = {z} | Intensity increase = {intensity_increase}"
         label = QLabel(info)
         # We add the info in the top of the layout
@@ -304,7 +353,6 @@ class MainWindow(QMainWindow):
         self.y.setText(str(y))
         self.x.blockSignals(False)
         self.y.blockSignals(False)
-
 
     def update_main_canvas_by_index(self, index_z):
         """
@@ -372,7 +420,7 @@ class MainWindow(QMainWindow):
         image_container.setPixmap(pixmap)
 
         # We prepare the text of each slice
-        label_text = QLabel(f"Slice {index}")
+        label_text = QLabel(f"Slice {index + 1}")
         label_text.setStyleSheet("padding-top: 5px;")
         label_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
@@ -394,8 +442,8 @@ class MainWindow(QMainWindow):
 
         max_x, max_y = self.get_max_coordinates()
 
-        self.input_x, self.x = self.input_label("Coor X",0,max_x,0,self.update_graphic_by_input)
-        self.input_y, self.y = self.input_label("Coor Y",0,max_y,0,self.update_graphic_by_input)
+        self.input_x, self.x = self.input_label("Coor X", 0, max_x, 0, self.update_graphic_by_input)
+        self.input_y, self.y = self.input_label("Coor Y", 0, max_y, 0, self.update_graphic_by_input)
 
         input_box = QHBoxLayout()
         input_box.addLayout(self.input_x)
@@ -403,7 +451,7 @@ class MainWindow(QMainWindow):
 
         layout = QVBoxLayout()
         layout.addLayout(input_box)
-        layout.addSpacing(8)
+        layout.addSpacing(int(self.screen_size.height() * 0.01))
         layout.addWidget(self.graphic)
 
         # line to separate the graphic and the record
@@ -424,26 +472,22 @@ class MainWindow(QMainWindow):
         layout.addWidget(QLabel("<b>Clicks record:</b>"))
         layout.addWidget(scroll)
 
-        container.setMinimumWidth(int(self.screen_size.width() * 0.25))
-        container.setMinimumHeight(int(self.screen_size.height() * 0.25)) #Test needing !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        # main_container.setWidgetResizable(True)
+        container.setMinimumWidth(int(self.screen_size.width() * 0.30))
+        container.setMinimumHeight(int(self.screen_size.height() * 0.25))
         container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
-        # To prevent it from taking focus from the keyboard when it is clicked
-        # main_container.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         container.setLayout(layout)
-
         container.setObjectName("graphic")
 
         return container
 
-    def main_image_layout(self, data):
+    def main_image_layout(self, data,subject_name):
         """
         Creation of the layout that contains the main/FigureCanvas image
         :param data: numpy array of data image
         :return: the layout with the main/FigureCanvas image inside
         """
-        self.canvas = NiftiCanvas(data)
+        self.canvas = NiftiCanvas(data,subject_name)
         # No focus of the keyboard when pressed
         self.canvas.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.canvas.mpl_connect('button_press_event', self.clicked)
@@ -461,12 +505,10 @@ class MainWindow(QMainWindow):
 
         container = QWidget()
         container.setMinimumSize(main_image_minSize)
-        container.setMaximumWidth(int(self.screen_size.width() * 0.45))
         container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         container.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         container.setObjectName("main_image")
-        container.setMaximumWidth(int(self.screen_size.width() * 0.40))
 
         container.setLayout(layout)
 
@@ -497,7 +539,7 @@ class MainWindow(QMainWindow):
             self.canvas.set_t(t_value)
 
         if self.data is not None:
-            #We update with the T value the images of the selector
+            # We update with the T value the images of the selector
             slices_t = get_nifti_slices(self.data, current_t=t_value)
 
     def update_time_from_text(self):
@@ -545,8 +587,7 @@ class MainWindow(QMainWindow):
         if self.movie_timer.isActive():
             self.movie_timer.stop()
 
-
-    def input_label(self,input_text,min_range,max_range,init_val,text_callback):
+    def input_label(self, input_text, min_range, max_range, init_val, text_callback):
         input_row_layout = QHBoxLayout()
 
         label = QLabel(f"<b>{input_text}:</b>")
@@ -579,7 +620,7 @@ class MainWindow(QMainWindow):
 
     def slider_label(self, label_text, min_range, max_range, init_val, slider_callback, text_callback,stop_movie=False):
         container_widget = QWidget()
-        container_widget.setFixedWidth(selector_minWidth)
+        container_widget.setMinimumWidth(selector_minWidth)
         layout = QVBoxLayout(container_widget)
 
         input_row_layout = QHBoxLayout()
@@ -625,17 +666,17 @@ class MainWindow(QMainWindow):
 
         return container_widget, slider, line_edit
 
-    def update_image_selector(self,images_data):
-        #We clean the selector
+    def update_image_selector(self, images_data):
+        # We clean the selector
         self.clear_layout(self.selector_layout)
 
-        #For each image in the data, we create a row according to the quantity we specify
+        # For each image in the data, we create a row according to the quantity we specify
         for i in range(0, len(images_data), amount_image_selector_in_row):
             row_widget = QWidget()
             row_layout = QHBoxLayout(row_widget)
             row_layout.setContentsMargins(0, 0, 0, 0)
 
-            #From the beginning of this row to the indicated amount
+            # From the beginning of this row to the indicated amount
             row_images = images_data[i:i + amount_image_selector_in_row]
 
             for j, current_image in enumerate(row_images):
@@ -687,10 +728,8 @@ class MainWindow(QMainWindow):
         self.update_image_selector(images_data)
 
         scroll = QScrollArea()
-        scroll.setFixedWidth(selector_minWidth)
+        scroll.setMinimumWidth(selector_minWidth)
         scroll.setWidgetResizable(True)
-        # No focus of the keyboard when clicked
-        # scroll.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         # deactivation of the horizontal bar
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll.setObjectName("selector")
@@ -713,9 +752,9 @@ class MainWindow(QMainWindow):
         ax = self.canvas.axes
 
         self.current_roi = EllipseSelector(ax, self.on_ellipsis_select,
-                                           # 'line' para ver el borde
+                                           # 'line' To see the border
                                            useblit=True,
-                                           button=[1],  # botón izquierdo del ratón
+                                           button=[1],  # left button of the mouse
                                            minspanx=5, minspany=5,
                                            spancoords='pixels',
                                            interactive=True)
@@ -769,7 +808,9 @@ class MainWindow(QMainWindow):
             self.update_image_selector(np.array(roi_slices_t0))
         else:
             self.left_container = self.image_selector_layout(np.array(roi_slices_t0))
-            self.main_layout.insertWidget(0, self.left_container)
+
+            if self.main_splitter:
+                self.main_splitter.insertWidget(0, self.left_container)
 
         if self.canvas:
             self.canvas.update_image(self.data)
@@ -792,7 +833,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     logo_path = os.path.join(name_current_dir, "assets", "logo.png")
     app.setWindowIcon(QIcon(logo_path))
-    #app.setStyle(QStyleFactory.create("Fusion"))
+    # app.setStyle(QStyleFactory.create("Fusion"))
     window = MainWindow()
 
     window.show()
