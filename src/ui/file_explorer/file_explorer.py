@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QListWidget,
 from scipy.differentiate import derivative
 
 from src.io.bruker_conversion import convert_studies_from_bruker
+from src.ui.file_explorer.shortcuts_menu import ShortcutsMenu
 from src.utils.get_file_to_process import get_files_to_process
 from src.utils.misc import denoise_filters_dict, file_options_dict
 
@@ -334,6 +335,8 @@ class TopMenu(QMenuBar):
     def __init__(self):
         super().__init__()
         self.file_menu = FileMenu(self)
+        self.shortcuts = None
+        self.shortcuts_action = None
         self.preprocessing_menu = PreprocessingMenu(self)
         self.create_top_menu()
 
@@ -344,11 +347,26 @@ class TopMenu(QMenuBar):
         # Preprocessing menu section
         self.addMenu(self.preprocessing_menu)
 
+        self.create_shortcuts_action()
+
+    def create_shortcuts_action(self):
+        self.shortcuts_action = QAction("&Shortcuts", self)
+        self.shortcuts_action.triggered.connect(self.open_shortcuts)
+        self.addAction(self.shortcuts_action)
+
     def deactivate(self):
         self.preprocessing_menu.setEnabled(False)
 
     def activate(self):
         self.preprocessing_menu.setEnabled(True)
+
+    def open_shortcuts(self):
+        if self.shortcuts is None:
+            self.shortcuts = ShortcutsMenu()
+
+        self.shortcuts.show()
+        self.shortcuts.raise_()
+
 
 class FileListWidget(QListWidget):
 
