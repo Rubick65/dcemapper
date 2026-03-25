@@ -207,7 +207,6 @@ class MainWindow(QMainWindow):
         self.main_splitter.setCollapsible(1, False)
         self.main_splitter.setCollapsible(2, False)
 
-        total_w = self.width()
         #Sizes of splitter containers (left,mid,right)
         self.main_splitter.setStretchFactor(0, 20)
         self.main_splitter.setStretchFactor(1, 45)
@@ -298,6 +297,9 @@ class MainWindow(QMainWindow):
             self._shortcuts.append(shortcut)
 
     def reset_layout(self):
+        """
+        Reset of the default sizes of each container
+        """
         if self.main_splitter:
             self.main_splitter.setSizes([200, 475, 325])
         try:
@@ -365,6 +367,13 @@ class MainWindow(QMainWindow):
             self.showFullScreen()
 
     def add_to_record(self, x, y, z, intensitis_t):
+        """
+        Function to add the intensities to the record
+        :param x: Coor X
+        :param y: Coor Y
+        :param z: current Slice (Z)
+        :param intensitis_t: Intensities in all the times
+        """
         intensity_increase = ((intensitis_t[-1] - intensitis_t[0]) / intensitis_t[0] * 100) if intensitis_t[0] != 0 else 0
         info = f"Click = {self.record_layout.count() + 1} | X = {x} | Y = {y} | Z = {z} | Intensity increase = {intensity_increase}"
         label = QLabel(info)
@@ -392,6 +401,7 @@ class MainWindow(QMainWindow):
 
         # We upload the graphic with the new data
         self.graphic.update_graph(intensities_t, x, y)
+        # Block the signals to prevent errors
         self.x.blockSignals(True)
         self.y.blockSignals(True)
         self.x.setText(str(x))
@@ -479,8 +489,8 @@ class MainWindow(QMainWindow):
 
     def graphic_layout(self):
         """
-        Contenedor con ScrollArea que permite redimensionar verticalmente
-        el gráfico y el registro de clics mediante un QSplitter.
+        Creation of the container that holds the graph, with its inputs and the click log
+        :return: The container with its components
         """
         container = QScrollArea()
         container.setWidgetResizable(True)
@@ -493,6 +503,7 @@ class MainWindow(QMainWindow):
         self.graphic.setMinimumHeight(400)
         max_x, max_y = self.get_max_coordinates()
 
+        #Creation of the X and Y inputs
         input_container_widget = QWidget()
         self.input_x, self.x = self.input_label("Coor X", 0, max_x, 0, self.update_graphic_by_input)
         self.input_y, self.y = self.input_label("Coor Y", 0, max_y, 0, self.update_graphic_by_input)
@@ -501,6 +512,7 @@ class MainWindow(QMainWindow):
         input_box_layout.addLayout(self.input_x)
         input_box_layout.addLayout(self.input_y)
 
+        #Splitter to drag and drop elements while resizing them
         v_splitter = QSplitter(Qt.Orientation.Vertical)
 
         v_splitter.addWidget(self.graphic)
@@ -509,6 +521,7 @@ class MainWindow(QMainWindow):
         record_v_layout = QVBoxLayout(record_group_widget)
         record_v_layout.setContentsMargins(0, 5, 0, 0)
 
+        #Line to separate graph and record (visual only)
         line = QWidget()
         line.setFixedHeight(2)
         line.setStyleSheet("background-color: #444;")
@@ -564,7 +577,6 @@ class MainWindow(QMainWindow):
         container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         container.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        container.setObjectName("main_image")
 
         container.setLayout(layout)
 
@@ -594,9 +606,9 @@ class MainWindow(QMainWindow):
         if self.canvas:
             self.canvas.set_t(t_value)
 
-        if self.data is not None:
-            # We update with the T value the images of the selector
-            slices_t = get_nifti_slices(self.data, current_t=t_value)
+        #if self.data is not None:
+        #    # We update with the T value the images of the selector
+        #    slices_t = get_nifti_slices(self.data, current_t=t_value)
 
     def update_time_from_text(self):
         """
@@ -644,6 +656,15 @@ class MainWindow(QMainWindow):
             self.movie_timer.stop()
 
     def input_label(self, input_text, min_range, max_range, init_val, text_callback):
+        """
+        Function to create input fields with your texts.
+        :param input_text: input text
+        :param min_range: min range of the input
+        :param max_range: max range of the input
+        :param init_val: initial value of the input
+        :param text_callback: Function called when the text is entered
+        :return: the input label and the line edit
+        """
         input_row_layout = QHBoxLayout()
 
         label = QLabel(f"<b>{input_text}:</b>")
@@ -654,6 +675,11 @@ class MainWindow(QMainWindow):
         line_edit.setValidator(validator)
 
         def force_range(text):
+            """
+            Internal function to validate that the established limits are not exceeded
+            :param text: input text
+            :return: value modified to respect the limits
+            """
             if text == "": return
             try:
                 val = int(text)
@@ -674,8 +700,18 @@ class MainWindow(QMainWindow):
 
         return input_row_layout, line_edit
 
-    def slider_label(self, label_text, min_range, max_range, init_val, slider_callback, text_callback,
-                     stop_movie=False):
+    def slider_label(self, label_text, min_range, max_range, init_val, slider_callback, text_callback,stop_movie=False):
+        """
+        Creation of a slider label with your texts.
+        :param label_text: label text
+        :param min_range: min range of the slider
+        :param max_range: max range of the slider
+        :param init_val: initial value of the slider
+        :param slider_callback: function called when the slider moves
+        :param text_callback: function called when the text is entered in the input
+        :param stop_movie: bool to know if we stop the movie mode or not
+        :return: the slider label, the line edit and his container
+        """
         container_widget = QWidget()
         container_widget.setMinimumWidth(selector_minWidth)
         layout = QVBoxLayout(container_widget)
@@ -690,6 +726,11 @@ class MainWindow(QMainWindow):
         line_edit.setValidator(validator)
 
         def force_range(text):
+            """
+            Internal function to validate that the established limits are not exceeded
+            :param text: input text
+            :return: value modified to respect the limits
+            """
             if text == "": return
             try:
                 val = int(text)
@@ -710,6 +751,7 @@ class MainWindow(QMainWindow):
         slider.setMaximum(max_range)
         slider.setValue(init_val)
 
+        #Functions that are activated when a value is modified
         slider.valueChanged.connect(slider_callback)
         line_edit.textChanged.connect(force_range)
         line_edit.editingFinished.connect(text_callback)
@@ -724,6 +766,10 @@ class MainWindow(QMainWindow):
         return container_widget, slider, line_edit
 
     def update_image_selector(self, images_data):
+        """
+        Function to create all the images in the image selector
+        :param images_data: data of each image
+        """
         # We clean the selector
         self.clear_layout(self.selector_layout)
 
@@ -787,9 +833,9 @@ class MainWindow(QMainWindow):
         scroll = QScrollArea()
         scroll.setMinimumWidth(selector_minWidth)
         scroll.setWidgetResizable(True)
+
         # deactivation of the horizontal bar
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        scroll.setObjectName("selector")
         scroll.setWidget(container)
         main_left_layout.addWidget(scroll)
 
