@@ -99,6 +99,17 @@ class NiftiCanvas(FigureCanvas):
 
         super().draw()
 
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+
+        fontsize = max(8,event.size().width() / 30)
+
+        self.slice_text.set_fontsize(fontsize)
+        self.subject_text.set_fontsize(fontsize)
+        self.cmap_text.set_fontsize(fontsize)
+
+        self.draw_idle()
+
     def load_image(self):
         """
         Function to load/reload the image
