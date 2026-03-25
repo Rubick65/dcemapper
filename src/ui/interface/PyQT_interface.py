@@ -29,10 +29,9 @@ selector_minWidth = 280
 
 amount_image_selector_in_row = 2
 
-main_image_minSize = QSize(400, 400)
+main_image_minSize = QSize(300, 400)
 
 name_current_dir = os.path.dirname(os.path.abspath(__file__))
-
 
 class MainWindow(QMainWindow):
     def __init__(self, nifty_path=None):
@@ -43,8 +42,8 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("dcemapper")
         self.setMinimumSize(window_minSize)
         self.screen_size = self.screen().availableGeometry()  # Window size
-        width = int(self.screen_size.width() * 0.4)
-        height = int(self.screen_size.height() * 0.7)
+        width = int(self.screen_size.width() * 0.825)
+        height = int(self.screen_size.height() * 0.85)
         self.resize(width, height)
         self.nifty_path = nifty_path
         self.movie_speed = 30  # miliseconds fps
@@ -107,8 +106,7 @@ class MainWindow(QMainWindow):
     def preprocessing(self, selected_preprocess_options):
         denoise_filter, gibbs = selected_preprocess_options
 
-        output_folder = create_output_folder(self.current_subject if self.current_subject else "Unknown",
-                                             self.derivative_folder)
+        output_folder = create_output_folder(self.current_subject if self.current_subject else "Unknown",self.derivative_folder)
         data = self.nifty_path
 
         if denoise_filter:
@@ -138,6 +136,9 @@ class MainWindow(QMainWindow):
         if isinstance(nifty_path, tuple):
             self.current_subject = nifty_path[0]  # Name of the subject
             nifty_path = nifty_path[1]
+        else:
+            # If it is a single file, we extract the subject name from the file structure
+            self.current_subject = Path(nifty_path).parent.parent.name
 
         self.derivative_folder = derivative_folder
 
@@ -198,13 +199,14 @@ class MainWindow(QMainWindow):
         self.mid_container = self.main_image_layout(self.data, self.current_subject)
         self.right_container = self.graphic_layout()
 
-        self.main_layout.addWidget(self.left_container)
+        self.main_splitter.addWidget(self.left_container)
         self.main_splitter.addWidget(self.mid_container)
         self.main_splitter.addWidget(self.right_container)
 
         # To prevent that the containers collapse each to other
         self.main_splitter.setCollapsible(0, False)
         self.main_splitter.setCollapsible(1, False)
+        self.main_splitter.setCollapsible(2, False)
 
         total_w = self.width()
         # Sizes of splitter containers (mid,right)
@@ -281,6 +283,7 @@ class MainWindow(QMainWindow):
             Qt.Key.Key_Down: self.update_time_from_down_key,
             Qt.Key.Key_Space: self.toggle_movie_mode,
             Qt.Key.Key_H: self.toolbar.home,
+            Qt.Key.Key_R: self.reset_layout,
             Qt.Key.Key_Comma: self.toolbar.back,
             Qt.Key.Key_Period: self.toolbar.forward,
             Qt.Key.Key_Z: self.handle_zoom_key,
@@ -292,6 +295,20 @@ class MainWindow(QMainWindow):
             shortcut = QShortcut(QKeySequence(key), self)
             shortcut.activated.connect(callback)
             self._shortcuts.append(shortcut)
+
+    def reset_layout(self):
+        """
+        Reset of the default sizes of each container
+        """
+        if self.main_splitter:
+            self.main_splitter.setSizes([200, 475, 325])
+        try:
+            v_splitters = self.right_container.findChildren(QSplitter)
+            for vs in v_splitters:
+                if vs.orientation() == Qt.Orientation.Vertical:
+                    vs.setSizes([700, 300])
+        except Exception:
+            pass
 
     def handle_zoom_key(self):
         if self.toolbar and not self.toolbar.mode.name == 'PAN' and not self.click_pressed:
@@ -350,8 +367,14 @@ class MainWindow(QMainWindow):
             self.showFullScreen()
 
     def add_to_record(self, x, y, z, intensitis_t):
-        intensity_increase = ((intensitis_t[-1] - intensitis_t[0]) / intensitis_t[0] * 100) if intensitis_t[
-                                                                                                   0] != 0 else 0
+        """
+        Function to add the intensities to the record
+        :param x: Coor X
+        :param y: Coor Y
+        :param z: current Slice (Z)
+        :param intensitis_t: Intensities in all the times
+        """
+        intensity_increase = ((intensitis_t[-1] - intensitis_t[0]) / intensitis_t[0] * 100) if intensitis_t[0] != 0 else 0
         info = f"Click = {self.record_layout.count() + 1} | X = {x} | Y = {y} | Z = {z} | Intensity increase = {intensity_increase}"
         label = QLabel(info)
         # We add the info in the top of the layout
@@ -378,6 +401,7 @@ class MainWindow(QMainWindow):
 
         # We upload the graphic with the new data
         self.graphic.update_graph(intensities_t, x, y)
+        # Block the signals to prevent errors
         self.x.blockSignals(True)
         self.y.blockSignals(True)
         self.x.setText(str(x))
@@ -465,56 +489,64 @@ class MainWindow(QMainWindow):
 
     def graphic_layout(self):
         """
-        Creation of the layout that contains the graphic
-        :return: the layout with the graphic created
+        Creation of the container that holds the graph, with its inputs and the click log
+        :return: The container with its components
         """
         container = QScrollArea()
-        self.graphic = IntensityGraph()
+        container.setWidgetResizable(True)
+        container.setMinimumWidth(int(self.screen_size.width() * 0.325))
 
+        content_widget = QWidget()
+        main_v_layout = QVBoxLayout(content_widget)
+
+        self.graphic = IntensityGraph()
+        self.graphic.setMinimumHeight(400)
         max_x, max_y = self.get_max_coordinates()
 
+        #Creation of the X and Y inputs
+        input_container_widget = QWidget()
         self.input_x, self.x = self.input_label("Coor X", 0, max_x, 0, self.update_graphic_by_input)
         self.input_y, self.y = self.input_label("Coor Y", 0, max_y, 0, self.update_graphic_by_input)
 
-        input_box = QHBoxLayout()
-        input_box.addLayout(self.input_x)
-        input_box.addLayout(self.input_y)
+        input_box_layout = QHBoxLayout(input_container_widget)
+        input_box_layout.addLayout(self.input_x)
+        input_box_layout.addLayout(self.input_y)
 
-        layout = QVBoxLayout()
-        layout.addLayout(input_box)
-        layout.addSpacing(int(self.screen_size.height() * 0.01))
-        layout.addWidget(self.graphic)
+        #Splitter to drag and drop elements while resizing them
+        v_splitter = QSplitter(Qt.Orientation.Vertical)
 
-        # line to separate the graphic and the record
+        v_splitter.addWidget(self.graphic)
+
+        record_group_widget = QWidget()
+        record_v_layout = QVBoxLayout(record_group_widget)
+        record_v_layout.setContentsMargins(0, 5, 0, 0)
+
+        #Line to separate graph and record (visual only)
         line = QWidget()
         line.setFixedHeight(2)
         line.setStyleSheet("background-color: #444;")
-        layout.addWidget(line)
+        record_v_layout.addWidget(line)
+        record_v_layout.addWidget(QLabel("<b>Clicks record:</b>"))
 
-        scroll = QScrollArea()
-        # scroll.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        scroll.setWidgetResizable(True)
-
+        scroll_record = QScrollArea()
+        scroll_record.setWidgetResizable(True)
         scroll_content = QWidget()
         self.record_layout = QVBoxLayout(scroll_content)
         self.record_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        scroll.setWidget(scroll_content)
+        scroll_record.setWidget(scroll_content)
 
-        layout.addWidget(QLabel("<b>Clicks record:</b>"))
-        layout.addWidget(scroll)
+        record_v_layout.addWidget(scroll_record)
 
-        container.setMinimumWidth(int(self.screen_size.width() * 0.25))
-        container.setMinimumHeight(
-            int(self.screen_size.height() * 0.25))  # Test needing !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        # main_container.setWidgetResizable(True)
-        container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        v_splitter.addWidget(record_group_widget)
 
-        # To prevent it from taking focus from the keyboard when it is clicked
-        # main_container.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        container.setLayout(layout)
+        v_splitter.setSizes([700, 300])
 
-        container.setObjectName("graphic")
+        v_splitter.setCollapsible(0, False)
 
+        main_v_layout.addWidget(input_container_widget)
+        main_v_layout.addWidget(v_splitter)
+
+        container.setWidget(content_widget)
         return container
 
     def main_image_layout(self, data, subject_name):
@@ -536,16 +568,15 @@ class MainWindow(QMainWindow):
         self.toolbar = NiftiToolbar(self.canvas, self)
 
         layout = QVBoxLayout()
+        layout.setContentsMargins(0, 20, 0, 0)
         layout.addWidget(self.toolbar)
         layout.addWidget(self.canvas)
 
         container = QWidget()
         container.setMinimumSize(main_image_minSize)
-        container.setMaximumWidth(int(self.screen_size.width() * 0.45))
         container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         container.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        container.setObjectName("main_image")
 
         container.setLayout(layout)
 
@@ -576,9 +607,9 @@ class MainWindow(QMainWindow):
         if self.canvas:
             self.canvas.set_t(t_value)
 
-        if self.data is not None:
-            # We update with the T value the images of the selector
-            slices_t = get_nifti_slices(self.data, current_t=t_value)
+        #if self.data is not None:
+        #    # We update with the T value the images of the selector
+        #    slices_t = get_nifti_slices(self.data, current_t=t_value)
 
     def update_time_from_text(self):
         """
@@ -626,6 +657,15 @@ class MainWindow(QMainWindow):
             self.movie_timer.stop()
 
     def input_label(self, input_text, min_range, max_range, init_val, text_callback):
+        """
+        Function to create input fields with your texts.
+        :param input_text: input text
+        :param min_range: min range of the input
+        :param max_range: max range of the input
+        :param init_val: initial value of the input
+        :param text_callback: Function called when the text is entered
+        :return: the input label and the line edit
+        """
         input_row_layout = QHBoxLayout()
 
         label = QLabel(f"<b>{input_text}:</b>")
@@ -636,6 +676,11 @@ class MainWindow(QMainWindow):
         line_edit.setValidator(validator)
 
         def force_range(text):
+            """
+            Internal function to validate that the established limits are not exceeded
+            :param text: input text
+            :return: value modified to respect the limits
+            """
             if text == "": return
             try:
                 val = int(text)
@@ -656,8 +701,18 @@ class MainWindow(QMainWindow):
 
         return input_row_layout, line_edit
 
-    def slider_label(self, label_text, min_range, max_range, init_val, slider_callback, text_callback,
-                     stop_movie=False):
+    def slider_label(self, label_text, min_range, max_range, init_val, slider_callback, text_callback,stop_movie=False):
+        """
+        Creation of a slider label with your texts.
+        :param label_text: label text
+        :param min_range: min range of the slider
+        :param max_range: max range of the slider
+        :param init_val: initial value of the slider
+        :param slider_callback: function called when the slider moves
+        :param text_callback: function called when the text is entered in the input
+        :param stop_movie: bool to know if we stop the movie mode or not
+        :return: the slider label, the line edit and his container
+        """
         container_widget = QWidget()
         container_widget.setMinimumWidth(selector_minWidth)
         layout = QVBoxLayout(container_widget)
@@ -672,6 +727,11 @@ class MainWindow(QMainWindow):
         line_edit.setValidator(validator)
 
         def force_range(text):
+            """
+            Internal function to validate that the established limits are not exceeded
+            :param text: input text
+            :return: value modified to respect the limits
+            """
             if text == "": return
             try:
                 val = int(text)
@@ -692,6 +752,7 @@ class MainWindow(QMainWindow):
         slider.setMaximum(max_range)
         slider.setValue(init_val)
 
+        #Functions that are activated when a value is modified
         slider.valueChanged.connect(slider_callback)
         line_edit.textChanged.connect(force_range)
         line_edit.editingFinished.connect(text_callback)
@@ -706,6 +767,10 @@ class MainWindow(QMainWindow):
         return container_widget, slider, line_edit
 
     def update_image_selector(self, images_data):
+        """
+        Function to create all the images in the image selector
+        :param images_data: data of each image
+        """
         # We clean the selector
         self.clear_layout(self.selector_layout)
 
@@ -740,7 +805,7 @@ class MainWindow(QMainWindow):
         :return: QScroll with all the images
         """
         main_left_widget = QWidget()
-        main_left_widget.setFixedWidth(selector_minWidth)
+        main_left_widget.setMaximumWidth(selector_minWidth)
         main_left_layout = QVBoxLayout(main_left_widget)
         main_left_layout.setContentsMargins(0, 0, 0, 0)
 
@@ -769,9 +834,9 @@ class MainWindow(QMainWindow):
         scroll = QScrollArea()
         scroll.setMinimumWidth(selector_minWidth)
         scroll.setWidgetResizable(True)
+
         # deactivation of the horizontal bar
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        scroll.setObjectName("selector")
         scroll.setWidget(container)
         main_left_layout.addWidget(scroll)
 

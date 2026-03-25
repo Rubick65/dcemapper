@@ -20,7 +20,7 @@ class NiftiCanvas(FigureCanvas):
         self.current_z = 0  # Current slide
         self.current_t = 0  # Current time
 
-        self.slice_text = self.fig.text(0.25, 1,
+        self.slice_text = self.fig.text(0.25, 1.1,
                                         f"Slice: {self.current_z + 1}",
                                         transform=self.axes.transAxes,
                                         color='white',
@@ -48,7 +48,7 @@ class NiftiCanvas(FigureCanvas):
         # Image of the np array
         self.img_slice = self.axes.imshow(self.current_slice, cmap=self.cmap)
 
-        self.cmap_text = self.fig.text(0.75, 1,
+        self.cmap_text = self.fig.text(0.75, 1.1,
                                        f"Cmap: {self.img_slice.get_cmap().name}",
                                        transform=self.axes.transAxes,
                                        color='white',
@@ -98,6 +98,17 @@ class NiftiCanvas(FigureCanvas):
             self.cmap_text.set_text(f"Cmap: {new_name}")
 
         super().draw()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+
+        fontsize = max(8,event.size().width() / 30)
+
+        self.slice_text.set_fontsize(fontsize)
+        self.subject_text.set_fontsize(fontsize)
+        self.cmap_text.set_fontsize(fontsize)
+
+        self.draw_idle()
 
     def load_image(self):
         """
