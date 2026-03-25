@@ -9,6 +9,7 @@ from src.utils.misc import roi_actions_dict
 
 class RoiMenu(QMenu):
     selected_text_signal = pyqtSignal(str)
+    deactivate_roi_selection_signal = pyqtSignal()
 
     def __init__(self):
         super().__init__()
@@ -30,9 +31,9 @@ class RoiMenu(QMenu):
             self.group.addAction(denoising_filter)
             self.addAction(denoising_filter)
 
-
     def handle_exclusivity(self, selected_action: QAction):
         if not selected_action.isChecked():
+            self.deactivate_roi_selection_signal.emit()
             return
 
         for action in self.group.actions():

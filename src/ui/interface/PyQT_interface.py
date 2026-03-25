@@ -8,12 +8,12 @@ from PyQt6.QtGui import QIcon
 from PyQt6.QtGui import QPixmap, QImage, QKeySequence, QShortcut, QIntValidator
 from PyQt6.QtWidgets import QApplication, QMainWindow, QHBoxLayout, QVBoxLayout, QWidget, QScrollArea, QLabel, \
     QSizePolicy, QSlider, QLineEdit, QSplitter
-from matplotlib.widgets import RectangleSelector, EllipseSelector
+from matplotlib.widgets import RectangleSelector, EllipseSelector, PolygonSelector
 
 from src.io.nifti_io import load_nifti, get_nifti_slices
 from src.preprocessing.denoise.denoise_filter import denoise_init_one_file
 from src.preprocessing.gibbs_removal.gibbs_removal import gibbs_remove
-from src.roi.roi_creation import create_rectangular_mask, update_elliptical_mask_subtractive, restar_mask
+from src.roi.roi_creation import update_rectangular_mask, update_elliptical_mask, update_polygon_mask, restar_mask
 from src.ui.Images_Class.ClickImage import ClickImage
 from src.ui.Images_Class.IntensityGraph import IntensityGraph
 from src.ui.Images_Class.NiftiCanvas import NiftiCanvas
@@ -118,12 +118,13 @@ class MainWindow(QMainWindow):
         self.nifty_path = data
 
         self.data, _ = load_nifti(data)
+        self.original_data = self.data
         self.toolbar.roi_menu.activate_roi_selection()
 
         roi_slices = get_nifti_slices(self.data)
         self.update_widgets(roi_slices)
-        
-    def set_one_file(self,nifty_path):
+
+    def set_one_file(self, nifty_path):
         if nifty_path:
             path_obj = Path(nifty_path)
 
@@ -133,7 +134,7 @@ class MainWindow(QMainWindow):
     def set_various_files(self, nifty_data):
         nifty_path, derivative_folder = nifty_data
         if isinstance(nifty_path, tuple):
-            self.current_subject = nifty_path[0] #Name of the subject
+            self.current_subject = nifty_path[0]  # Name of the subject
             nifty_path = nifty_path[1]
         else:
             # If it is a single file, we extract the subject name from the file structure
@@ -153,7 +154,6 @@ class MainWindow(QMainWindow):
             return
 
         self.movie_timer.stop()
-        self.nifty_path = nifty_path
         self.movie_speed = 30
 
         if self.canvas:
@@ -186,31 +186,31 @@ class MainWindow(QMainWindow):
         self.nifty_path = nifty_path
         self.data, _ = load_nifti(self.nifty_path)
         self.original_data = self.data.copy()
-        self.full_mask = np.ones(self.data.shape[:3], dtype=bool)
+        self.full_mask = np.ones(self.data.shape[:3], dtype=float)
 
         # We clean the layout
         self.clear_layout(self.main_layout)
 
-        #Splitter to drag the mid and right containers sizes
+        # Splitter to drag the mid and right containers sizes
         self.main_splitter = QSplitter(Qt.Orientation.Horizontal)
 
         # Create all the containers
         self.left_container = self.image_selector_layout(get_nifti_slices(self.data))
-        self.mid_container = self.main_image_layout(self.data,self.current_subject)
+        self.mid_container = self.main_image_layout(self.data, self.current_subject)
         self.right_container = self.graphic_layout()
 
         self.main_splitter.addWidget(self.left_container)
         self.main_splitter.addWidget(self.mid_container)
         self.main_splitter.addWidget(self.right_container)
 
-        #To prevent that the containers collapse each to other
+        # To prevent that the containers collapse each to other
+        self.main_splitter.setCollapsible(0, False)
         self.main_splitter.setCollapsible(1, False)
         self.main_splitter.setCollapsible(2, False)
 
-        #Sizes of splitter containers (left,mid,right)
-        self.main_splitter.setStretchFactor(0, 20)
-        self.main_splitter.setStretchFactor(1, 45)
-        self.main_splitter.setStretchFactor(2, 35)
+        total_w = self.width()
+        # Sizes of splitter containers (mid,right)
+        self.main_splitter.setSizes([int(total_w * 0.6), int(total_w * 0.4)])
 
         self.main_layout.addWidget(self.main_splitter)
         self.top_bar.activate()
@@ -549,13 +549,13 @@ class MainWindow(QMainWindow):
         container.setWidget(content_widget)
         return container
 
-    def main_image_layout(self, data,subject_name):
+    def main_image_layout(self, data, subject_name):
         """
         Creation of the layout that contains the main/FigureCanvas image
         :param data: numpy array of data image
         :return: the layout with the main/FigureCanvas image inside
         """
-        self.canvas = NiftiCanvas(data,subject_name)
+        self.canvas = NiftiCanvas(data, subject_name)
         # No focus of the keyboard when pressed
         self.canvas.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.canvas.mpl_connect('button_press_event', self.clicked)
@@ -581,6 +581,7 @@ class MainWindow(QMainWindow):
         container.setLayout(layout)
 
         self.toolbar.roi_menu.selected_text_signal.connect(self.change_roi_selector)
+        self.toolbar.roi_menu.deactivate_roi_selection_signal.connect(self.deactivate_roi_selection)
         self.toolbar.previous_roi_signal.connect(self.go_to_previous_roi)
 
         return container
@@ -848,24 +849,35 @@ class MainWindow(QMainWindow):
                                              useblit=False,
                                              button=[1],
                                              minspanx=5, minspany=5,
-                                             spancoords='data',
+                                             spancoords='pixels',
                                              interactive=True)
 
     def create_elliptical_selector(self):
         ax = self.canvas.axes
 
         self.current_roi = EllipseSelector(ax, self.on_ellipsis_select,
-                                           # 'line' To see the border
                                            useblit=True,
-                                           button=[1],  # left button of the mouse
+                                           button=[1],
                                            minspanx=5, minspany=5,
                                            spancoords='pixels',
                                            interactive=True)
 
+    def create_polygon_selector(self):
+        ax = self.canvas.axes
+        style_config = dict(
+            color='cyan',
+            linestyle='-',
+            linewidth=2,
+            alpha=0.7
+        )
+
+        self.current_roi = PolygonSelector(ax, self.on_polygon_select,
+                                           useblit=True, props=style_config)
+
     def on_rectangle_select(self, eclick, erelease):
         roi_coords = (eclick.xdata, eclick.ydata, erelease.xdata, erelease.ydata)
         z_index = self.canvas.current_z
-        self.full_mask = create_rectangular_mask(roi_coords, self.full_mask, z_index)
+        self.full_mask = update_rectangular_mask(roi_coords, self.full_mask, z_index)
         self.update_canvas_with_roi()
 
     def update_mask_history(self):
@@ -885,9 +897,19 @@ class MainWindow(QMainWindow):
 
         z_index = self.canvas.current_z
         # full_mask, ellipsis_center, radius, z_index
-        self.full_mask = update_elliptical_mask_subtractive(self.full_mask, ellipsis_center, radius, z_index)
+        self.full_mask = update_elliptical_mask(self.full_mask, ellipsis_center, radius, z_index)
         # self.update_mask_history(mask)
         self.update_canvas_with_roi()
+
+    def on_polygon_select(self, vertices):
+        z_index = self.canvas.current_z
+        self.full_mask = update_polygon_mask(self.full_mask, vertices, z_index)
+        self.update_canvas_with_roi()
+        self.current_roi.set_active(False)
+        self.current_roi.set_active(True)
+
+        # 4. Forzamos el redibujado del canvas
+        self.canvas.draw_idle()
 
     def get_current_slice(self):
         return self.data[:, :, self.canvas.current_z, 0]
@@ -925,6 +947,11 @@ class MainWindow(QMainWindow):
                 self.create_rectangle_selector()
             case "e":
                 self.create_elliptical_selector()
+            case "p":
+                self.create_polygon_selector()
+
+    def deactivate_roi_selection(self):
+        self.current_roi = None
 
     def receive_file_list(self, files):
         if files:

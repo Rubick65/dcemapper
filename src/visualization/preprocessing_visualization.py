@@ -9,7 +9,7 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.widgets import RectangleSelector
 
-from src.roi.roi_creation import create_rectangular_mask
+from src.roi.roi_creation import update_rectangular_mask
 
 RETRY_CODE = 2
 
