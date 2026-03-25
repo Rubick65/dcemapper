@@ -93,6 +93,9 @@ class NiftiCanvas(FigureCanvas):
         self.z_changed.emit(self.current_z)
 
     def draw(self):
+        """
+        Override of the method so that the Cmap text is always changed before drawing it
+        """
         if hasattr(self, 'img_slice') and hasattr(self, 'cmap_text'):
             new_name = self.img_slice.get_cmap().name
             self.cmap_text.set_text(f"Cmap: {new_name}")
@@ -100,6 +103,10 @@ class NiftiCanvas(FigureCanvas):
         super().draw()
 
     def resizeEvent(self, event):
+        """
+        Override the resize method to dynamically update the size of the text
+        :param event: Resize event
+        """
         super().resizeEvent(event)
 
         fontsize = max(8,event.size().width() / 30)
@@ -121,6 +128,11 @@ class NiftiCanvas(FigureCanvas):
         self.draw()
 
     def _on_click(self, event):
+        """
+        Function to send the data of the selected pixel
+        :param event: Click event
+        :return:X, Y, and T intensity value
+        """
         # If the click are not in the image axes we ignored
         if event.inaxes != self.axes:
             return
@@ -145,7 +157,6 @@ class NiftiCanvas(FigureCanvas):
     def close_figure(self):
         plt.close(self.fig)
 
-    # Allows to the main window to hear the clicks
     def set_pixel_observer(self, callback_func):
         self.pixel_callback = callback_func
 

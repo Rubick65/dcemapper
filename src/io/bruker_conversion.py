@@ -10,15 +10,33 @@ from src.utils import bruker_data as bd
 warnings.filterwarnings("ignore")
 
 def get_modality_bruker(params):
+    """
+    Identify the bruker modality
+    :param params: dict with the parameters of sequence
+    :return: the modality
+    """
     for modality, conditions in bd.conditions_dict_bruker.items():
+        # If all the condition functions for that mode are met, it returns
         if all(cond(params) for cond in conditions):
             return modality
     return "unknown"
 
 def save_as_nifti_and_json(pvdset, scan_id, reco_id, output_path, study_info, extra_info):
+    """
+    Extract the image from the Bruker object, save it as .nii.gz
+    and generate the .json file with the BIDS metadata.
+    :param pvdset: object charge by brkraw
+    :param scan_id: Scan_id
+    :param reco_id: Reconstruction ID
+    :param output_path: Base path where the files will be saved.
+    :param study_info: General study information dict
+    :param extra_info: Additional technical information dict
+    :return:
+    """
     niiobj = pvdset.get_niftiobj(scan_id, reco_id, slope=True)
     nii_file = output_path.with_suffix(".nii.gz")
 
+    #If we get a list of volumes we stack them in a 4th dimension
     if isinstance(niiobj, list):
         ref_nii = niiobj[0]
         data_list = [nii.get_fdata() for nii in niiobj]
@@ -32,6 +50,7 @@ def save_as_nifti_and_json(pvdset, scan_id, reco_id, output_path, study_info, ex
     else:
         niiobj.to_filename(str(nii_file))
 
+    # Parsing and cleaning metadata according to the BIDS standard
     results_json = pvdset._parse_json(scan_id, reco_id, metadata=bd.metadata_ref_BIDS_bruker)
 
     clean_metadata = {}
@@ -40,6 +59,7 @@ def save_as_nifti_and_json(pvdset, scan_id, reco_id, output_path, study_info, ex
         if v is not None and v != ref_val:
             clean_metadata[k] = v
 
+    # Converting milliseconds to seconds
     for time_key in ["RepetitionTime", "EchoTime", "InversionTime"]:
         if time_key in clean_metadata:
             val = clean_metadata[time_key]
@@ -48,12 +68,18 @@ def save_as_nifti_and_json(pvdset, scan_id, reco_id, output_path, study_info, ex
             else:
                 clean_metadata[time_key] = float(val) / 1000.0
 
+    #Union of all the metadata and saving
     full_metadata = {**study_info, **clean_metadata, **extra_info}
 
     with open(output_path.with_suffix(".json"), 'w') as f:
         json.dump(full_metadata, f, indent=4)
 
 def get_study_info(pvdset):
+    """
+    Extracts basic study identification information from the Bruker object
+    :param pvdset: Bruker
+    :return: Dictionary with 'Date', 'SubjectID' and 'SessionID' cleaned of special characters.
+    """
     pv = pvdset.pvobj
 
     def clean_id(s):
@@ -66,6 +92,14 @@ def get_study_info(pvdset):
     }
 
 def convert_studies_from_bruker(input_dir, output_dir, skip_existing=True):
+    """
+    Scan a directory for Bruker studies ('subject' folders or ZIP files)
+    and systematically convert them to NIfTI format, organized by category
+    Create a BIDS-like folder structure: output_dir/sourcedata/sub-XXX_ses-YYY/anat|func|etc/
+    :param input_dir: Directory with Bruker studies
+    :param output_dir: Directory where NIfTI format will be saved
+    :param skip_existing: if true, skip subjects already processed
+    """
     input_path = Path(input_dir)
     output_root = Path(output_dir)
 
@@ -76,6 +110,7 @@ def convert_studies_from_bruker(input_dir, output_dir, skip_existing=True):
     stats = {"success": 0, "errors": 0, "skipped": 0}
     error_log = []
 
+    # We search for potential studies
     potential_studies = []
     for f in input_path.rglob("*"):
         if f.name == "subject":
@@ -83,14 +118,18 @@ def convert_studies_from_bruker(input_dir, output_dir, skip_existing=True):
         elif f.suffix == ".zip" and zipfile.is_zipfile(f):
             potential_studies.append(f)
 
+    # If there are no potential studies, we stop
     if not potential_studies:
         return
 
+    # For each potential studie
     for study_path in potential_studies:
         try:
+            # We load it and get the basic study identification
             pvdset = brkraw.load(str(study_path))
             study_info = get_study_info(pvdset)
 
+            # Normalization of subject ID according to BIDS standard
             subj_val = study_info['SubjectID']
             if not subj_val.startswith("sub-"):
                 subj_val = f"sub-{subj_val}"
@@ -106,12 +145,14 @@ def convert_studies_from_bruker(input_dir, output_dir, skip_existing=True):
                 stats["skipped"] += 1
                 continue
 
+            # Iterate over all available scans and reconstructions
             for scan_id, recos in pvdset._avail.items():
                 try:
                     method = pvdset.get_method(scan_id)
                     for reco_id in recos:
                         visu = pvdset.get_visu_pars(scan_id, reco_id)
 
+                        # Omit derived maps (ISAs) which are usually parametric/intermediate calculations
                         if visu.parameters.get("VisuSeriesTypeId") == "DERIVED_ISA":
                             continue
 
@@ -126,6 +167,7 @@ def convert_studies_from_bruker(input_dir, output_dir, skip_existing=True):
 
                         extra_info = {"ReceiverGain": rg, "RecoSlope": reco_slope}
 
+                        # Gather parameters to identify the modality
                         params = {
                             "scan_method": method.parameters.get("Method"),
                             "mt_on_off": method.parameters.get("PVM_MagTransOnOff", "Off"),
@@ -140,6 +182,7 @@ def convert_studies_from_bruker(input_dir, output_dir, skip_existing=True):
                             error_log.append(msg)
                             continue
 
+                        # Define destination folder and create it
                         category = bd.acq_categories_BIDS.get(modality, "etc")
 
                         target_folder = target_base / category
@@ -148,8 +191,10 @@ def convert_studies_from_bruker(input_dir, output_dir, skip_existing=True):
                         base_name = f"{subj_sess}_acq-{scan_id}_run-{reco_id}_{modality}"
                         output_full_path = target_folder / base_name
 
+                        #Save the files as nifti and json
                         save_as_nifti_and_json(pvdset, scan_id, reco_id, output_full_path, study_info, extra_info)
 
+                        # If it's DWI, also extract the .bvec and .bval files
                         if modality == "dwi":
                             pvdset.save_bdata(scan_id, base_name, dir=str(target_folder))
 
