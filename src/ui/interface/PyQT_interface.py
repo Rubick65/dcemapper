@@ -8,12 +8,12 @@ from PyQt6.QtGui import QIcon
 from PyQt6.QtGui import QPixmap, QImage, QKeySequence, QShortcut, QIntValidator
 from PyQt6.QtWidgets import QApplication, QMainWindow, QHBoxLayout, QVBoxLayout, QWidget, QScrollArea, QLabel, \
     QSizePolicy, QSlider, QLineEdit, QSplitter
-from matplotlib.widgets import RectangleSelector, EllipseSelector
+from matplotlib.widgets import RectangleSelector, EllipseSelector, PolygonSelector
 
 from src.io.nifti_io import load_nifti, get_nifti_slices
 from src.preprocessing.denoise.denoise_filter import denoise_init_one_file
 from src.preprocessing.gibbs_removal.gibbs_removal import gibbs_remove
-from src.roi.roi_creation import create_rectangular_mask, update_elliptical_mask_subtractive, restar_mask
+from src.roi.roi_creation import update_rectangular_mask, update_elliptical_mask, update_polygon_mask, restar_mask
 from src.ui.Images_Class.ClickImage import ClickImage
 from src.ui.Images_Class.IntensityGraph import IntensityGraph
 from src.ui.Images_Class.NiftiCanvas import NiftiCanvas
@@ -120,7 +120,7 @@ class MainWindow(QMainWindow):
         self.nifty_path = data
 
         self.data, _ = load_nifti(data)
-        self.original_data = self.data 
+        self.original_data = self.data
         self.toolbar.roi_menu.activate_roi_selection()
 
         roi_slices = get_nifti_slices(self.data)
@@ -185,7 +185,7 @@ class MainWindow(QMainWindow):
         self.nifty_path = nifty_path
         self.data, _ = load_nifti(self.nifty_path)
         self.original_data = self.data.copy()
-        self.full_mask = np.ones(self.data.shape[:3], dtype=bool)
+        self.full_mask = np.ones(self.data.shape[:3], dtype=float)
 
         # We clean the layout
         self.clear_layout(self.main_layout)
@@ -784,24 +784,35 @@ class MainWindow(QMainWindow):
                                              useblit=False,
                                              button=[1],
                                              minspanx=5, minspany=5,
-                                             spancoords='data',
+                                             spancoords='pixels',
                                              interactive=True)
 
     def create_elliptical_selector(self):
         ax = self.canvas.axes
 
         self.current_roi = EllipseSelector(ax, self.on_ellipsis_select,
-                                           # 'line' To see the border
                                            useblit=True,
-                                           button=[1],  # left button of the mouse
+                                           button=[1],
                                            minspanx=5, minspany=5,
                                            spancoords='pixels',
                                            interactive=True)
 
+    def create_polygon_selector(self):
+        ax = self.canvas.axes
+        style_config = dict(
+            color='cyan',
+            linestyle='-',
+            linewidth=2,
+            alpha=0.7
+        )
+
+        self.current_roi = PolygonSelector(ax, self.on_polygon_select,
+                                           useblit=True, props=style_config)
+
     def on_rectangle_select(self, eclick, erelease):
         roi_coords = (eclick.xdata, eclick.ydata, erelease.xdata, erelease.ydata)
         z_index = self.canvas.current_z
-        self.full_mask = create_rectangular_mask(roi_coords, self.full_mask, z_index)
+        self.full_mask = update_rectangular_mask(roi_coords, self.full_mask, z_index)
         self.update_canvas_with_roi()
 
     def update_mask_history(self):
@@ -821,9 +832,19 @@ class MainWindow(QMainWindow):
 
         z_index = self.canvas.current_z
         # full_mask, ellipsis_center, radius, z_index
-        self.full_mask = update_elliptical_mask_subtractive(self.full_mask, ellipsis_center, radius, z_index)
+        self.full_mask = update_elliptical_mask(self.full_mask, ellipsis_center, radius, z_index)
         # self.update_mask_history(mask)
         self.update_canvas_with_roi()
+
+    def on_polygon_select(self, vertices):
+        z_index = self.canvas.current_z
+        self.full_mask = update_polygon_mask(self.full_mask, vertices, z_index)
+        self.update_canvas_with_roi()
+        self.current_roi.set_active(False)
+        self.current_roi.set_active(True)
+
+        # 4. Forzamos el redibujado del canvas
+        self.canvas.draw_idle()
 
     def get_current_slice(self):
         return self.data[:, :, self.canvas.current_z, 0]
@@ -861,6 +882,8 @@ class MainWindow(QMainWindow):
                 self.create_rectangle_selector()
             case "e":
                 self.create_elliptical_selector()
+            case "p":
+                self.create_polygon_selector()
 
     def deactivate_roi_selection(self):
         self.current_roi = None

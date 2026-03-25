@@ -22,4 +22,5 @@ denoise_filters = [
 roi_actions_dict = {
     "Rectangle": "ROI selection in form of rectangle",
     "Elliptical": "ROI selection in form of an ellipsis",
+    "Polygonal": "ROI selection in form of points selection",
 }
