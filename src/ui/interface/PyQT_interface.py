@@ -120,12 +120,13 @@ class MainWindow(QMainWindow):
         self.nifty_path = data
 
         self.data, _ = load_nifti(data)
+        self.original_data = self.data 
         self.toolbar.roi_menu.activate_roi_selection()
 
         roi_slices = get_nifti_slices(self.data)
         self.update_widgets(roi_slices)
-        
-    def set_one_file(self,nifty_path):
+
+    def set_one_file(self, nifty_path):
         if nifty_path:
             path_obj = Path(nifty_path)
 
@@ -135,7 +136,7 @@ class MainWindow(QMainWindow):
     def set_various_files(self, nifty_data):
         nifty_path, derivative_folder = nifty_data
         if isinstance(nifty_path, tuple):
-            self.current_subject = nifty_path[0] #Name of the subject
+            self.current_subject = nifty_path[0]  # Name of the subject
             nifty_path = nifty_path[1]
 
         self.derivative_folder = derivative_folder
@@ -152,7 +153,6 @@ class MainWindow(QMainWindow):
             return
 
         self.movie_timer.stop()
-        self.nifty_path = nifty_path
         self.movie_speed = 30
 
         if self.canvas:
@@ -190,24 +190,24 @@ class MainWindow(QMainWindow):
         # We clean the layout
         self.clear_layout(self.main_layout)
 
-        #Splitter to drag the mid and right containers sizes
+        # Splitter to drag the mid and right containers sizes
         self.main_splitter = QSplitter(Qt.Orientation.Horizontal)
 
         # Create all the containers
         self.left_container = self.image_selector_layout(get_nifti_slices(self.data))
-        self.mid_container = self.main_image_layout(self.data,self.current_subject)
+        self.mid_container = self.main_image_layout(self.data, self.current_subject)
         self.right_container = self.graphic_layout()
 
         self.main_layout.addWidget(self.left_container)
         self.main_splitter.addWidget(self.mid_container)
         self.main_splitter.addWidget(self.right_container)
 
-        #To prevent that the containers collapse each to other
+        # To prevent that the containers collapse each to other
         self.main_splitter.setCollapsible(0, False)
         self.main_splitter.setCollapsible(1, False)
 
         total_w = self.width()
-        #Sizes of splitter containers (mid,right)
+        # Sizes of splitter containers (mid,right)
         self.main_splitter.setSizes([int(total_w * 0.6), int(total_w * 0.4)])
 
         self.main_layout.addWidget(self.main_splitter)
@@ -350,7 +350,8 @@ class MainWindow(QMainWindow):
             self.showFullScreen()
 
     def add_to_record(self, x, y, z, intensitis_t):
-        intensity_increase = ((intensitis_t[-1] - intensitis_t[0]) / intensitis_t[0] * 100) if intensitis_t[0] != 0 else 0
+        intensity_increase = ((intensitis_t[-1] - intensitis_t[0]) / intensitis_t[0] * 100) if intensitis_t[
+                                                                                                   0] != 0 else 0
         info = f"Click = {self.record_layout.count() + 1} | X = {x} | Y = {y} | Z = {z} | Intensity increase = {intensity_increase}"
         label = QLabel(info)
         # We add the info in the top of the layout
@@ -516,13 +517,13 @@ class MainWindow(QMainWindow):
 
         return container
 
-    def main_image_layout(self, data,subject_name):
+    def main_image_layout(self, data, subject_name):
         """
         Creation of the layout that contains the main/FigureCanvas image
         :param data: numpy array of data image
         :return: the layout with the main/FigureCanvas image inside
         """
-        self.canvas = NiftiCanvas(data,subject_name)
+        self.canvas = NiftiCanvas(data, subject_name)
         # No focus of the keyboard when pressed
         self.canvas.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.canvas.mpl_connect('button_press_event', self.clicked)
@@ -549,6 +550,7 @@ class MainWindow(QMainWindow):
         container.setLayout(layout)
 
         self.toolbar.roi_menu.selected_text_signal.connect(self.change_roi_selector)
+        self.toolbar.roi_menu.deactivate_roi_selection_signal.connect(self.deactivate_roi_selection)
         self.toolbar.previous_roi_signal.connect(self.go_to_previous_roi)
 
         return container
@@ -859,6 +861,9 @@ class MainWindow(QMainWindow):
                 self.create_rectangle_selector()
             case "e":
                 self.create_elliptical_selector()
+
+    def deactivate_roi_selection(self):
+        self.current_roi = None
 
     def receive_file_list(self, files):
         if files:
