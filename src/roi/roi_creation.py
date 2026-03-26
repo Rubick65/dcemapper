@@ -6,6 +6,8 @@ from skimage.transform import resize
 
 def update_rectangular_mask(roi_coords, full_mask, z_index):
     try:
+        if not roi_coords:
+            return full_mask
 
         new_selection = np.zeros(
             (full_mask.shape[0], full_mask.shape[1]),
@@ -46,6 +48,9 @@ def update_rectangular_mask(roi_coords, full_mask, z_index):
 def update_elliptical_mask(full_mask, ellipsis_center, radius, z_index):
     try:
 
+        if not ellipsis_center and not radius:
+            return full_mask
+
         xc, yc = ellipsis_center
         a, b = radius
 
@@ -85,12 +90,15 @@ def update_elliptical_mask(full_mask, ellipsis_center, radius, z_index):
 
 def update_polygon_mask(full_mask, polygon_coords, z_index):
     try:
+
+        if not polygon_coords:
+            return full_mask
+
         h, w = full_mask.shape[:2]
         factor = 4
 
         h_big, w_big = h * factor, w * factor
         coords_big = np.array(polygon_coords) * factor
-
 
         rr, cc = polygon(coords_big[:, 0], coords_big[:, 1], shape=(h_big, w_big))
         mask_big = np.zeros((h_big, w_big), dtype=float)

@@ -43,16 +43,14 @@ class RoiMenu(QMenu):
         self.selected_text_signal.emit(selected_action.text()[0: 1].lower())
 
     def activate_roi_selection(self):
-        # 2. Verificamos que el grupo tenga las acciones
+
         actions = self.group.actions()
         if not actions:
-            # Si el grupo está vacío, búscalas en el menú directamente
             actions = self.actions()
 
         for action in actions:
             action.setEnabled(True)
 
-        # 3. Forzamos a Qt a que actualice el aspecto visual
         self.update()
 
 
