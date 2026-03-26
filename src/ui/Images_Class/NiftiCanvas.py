@@ -30,14 +30,15 @@ class NiftiCanvas(FigureCanvas):
                                         va='top'
                                         )
 
-        self.subject_text = self.fig.text(0.5, -0.10,
+        self.subject_text = self.fig.text(0.5, -0.05,
                                        f"Subject: {self.subject_name}",
                                        transform=self.axes.transAxes,
                                        color='white',
                                        fontsize=15,
                                        family = "Georgia",
                                        ha='center',
-                                       va='bottom'
+                                       va='top',
+                                       wrap =True
                                        )
 
         self.max_z = self.data.shape[2] - 1  # Max number of slides in np array
@@ -63,7 +64,7 @@ class NiftiCanvas(FigureCanvas):
 
         # Change background color
         self.fig.patch.set_facecolor('black')
-        self.fig.subplots_adjust(top=0.9, bottom=0.1)
+        self.fig.subplots_adjust(top=0.9, bottom=0.2)
 
         # parameter to save and external function
         self.pixel_callback = None
@@ -109,7 +110,7 @@ class NiftiCanvas(FigureCanvas):
         """
         super().resizeEvent(event)
 
-        fontsize = max(8,event.size().width() / 30)
+        fontsize = max(8,event.size().width() / 40)
 
         self.slice_text.set_fontsize(fontsize)
         self.subject_text.set_fontsize(fontsize)

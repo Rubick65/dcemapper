@@ -44,6 +44,8 @@ class MainWindow(QMainWindow):
         self.screen_size = self.screen().availableGeometry()  # Window size
         width = int(self.screen_size.width() * 0.825)
         height = int(self.screen_size.height() * 0.85)
+        self.total_w = self.width()
+        self.total_h = self.height()
         self.resize(width, height)
         self.nifty_path = nifty_path
         self.movie_speed = 30  # miliseconds fps
@@ -69,6 +71,7 @@ class MainWindow(QMainWindow):
         self.derivative_folder = None
         self.movie_timer = QTimer()
         self.movie_timer.timeout.connect(self.next_movie_frame)
+
 
         self.left_container = None
         self.image_widgets = []
@@ -216,9 +219,8 @@ class MainWindow(QMainWindow):
         self.main_splitter.setCollapsible(1, False)
         self.main_splitter.setCollapsible(2, False)
 
-        total_w = self.width()
         # Sizes of splitter containers (mid,right)
-        self.main_splitter.setSizes([int(total_w * 0.2), int(total_w * 0.4), int(total_w * 0.4)])
+        self.main_splitter.setSizes([int(self.total_w * 0.2), int(self.total_w * 0.4), int(self.total_w * 0.4)])
 
         self.main_layout.addWidget(self.main_splitter)
         self.top_bar.activate()
@@ -255,6 +257,9 @@ class MainWindow(QMainWindow):
         return 0, 0
 
     def cleanup_shortcuts(self):
+        """
+        Deleting previous shortcuts to avoid errors
+        """
         for s in self._shortcuts:
             s.setEnabled(False)
             s.deleteLater()
@@ -312,13 +317,12 @@ class MainWindow(QMainWindow):
         Reset of the default sizes of each container
         """
         if self.main_splitter:
-            total_w = self.width()
-            self.main_splitter.setSizes([int(total_w * 0.2), int(total_w * 0.4), int(total_w * 0.4)])
+            self.main_splitter.setSizes([int(self.total_w * 0.2), int(self.total_w * 0.4), int(self.total_w * 0.4)])
         try:
             v_splitters = self.right_container.findChildren(QSplitter)
             for vs in v_splitters:
                 if vs.orientation() == Qt.Orientation.Vertical:
-                    vs.setSizes([700, 300]) #Size of graphic and record layout
+                    vs.setSizes([int(self.total_h * 0.7), int(self.total_h * 0.3)]) #Size of graphic and record layout
         except Exception:
             pass
 
@@ -405,7 +409,6 @@ class MainWindow(QMainWindow):
             self.stop_movie_mode()
             if obj == self.left_container:
                 self.adjust_selector_columns()
-
 
         return super().eventFilter(obj, event)
 
@@ -562,7 +565,7 @@ class MainWindow(QMainWindow):
 
         v_splitter.addWidget(record_group_widget)
 
-        v_splitter.setSizes([700, 300])
+        v_splitter.setSizes([int(self.total_h * 0.7), int(self.total_h * 0.3)])
 
         v_splitter.setCollapsible(0, False)
 
@@ -805,6 +808,10 @@ class MainWindow(QMainWindow):
         return container_widget, slider, line_edit
 
     def adjust_selector_columns(self):
+        """
+        To adjust the number of images per row in the selector,
+        widen the selection to make the most of the available space.
+        """
         if self.data is None or self.selector_layout is None:
             return
 
@@ -867,6 +874,8 @@ class MainWindow(QMainWindow):
         main_left_layout.setContentsMargins(0, 0, 0, 0)
 
         num_t_points = self.data.shape[3] if self.data is not None else 1
+
+        #Creation of the T and fps sliders
 
         slider_t_group, self.slider_t, self.slider_t_input = self.slider_label(
             "Time Point (T)", 0, num_t_points - 1, 0,

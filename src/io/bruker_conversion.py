@@ -1,10 +1,12 @@
 import json
+import warnings
+import zipfile
+from pathlib import Path
+
 import brkraw
 import nibabel as nib
 import numpy as np
-import zipfile
-import warnings
-from pathlib import Path
+
 from src.utils import bruker_data as bd
 
 warnings.filterwarnings("ignore")
@@ -141,6 +143,7 @@ def convert_studies_from_bruker(input_dir, output_dir, skip_existing=True):
 
             target_base = output_root / "sourcedata" / subj_sess
 
+            #If existed, we skip the file
             if skip_existing and target_base.exists():
                 stats["skipped"] += 1
                 continue
@@ -175,6 +178,7 @@ def convert_studies_from_bruker(input_dir, output_dir, skip_existing=True):
                             "seq_name": visu.parameters.get("VisuAcquisitionProtocol", ""),
                         }
 
+                        #Get the modality
                         modality = get_modality_bruker(params)
 
                         if modality == "unknown":
@@ -216,31 +220,3 @@ def convert_studies_from_bruker(input_dir, output_dir, skip_existing=True):
         with open(log_file, "w") as f:
             f.write("\n".join(error_log))
         print(f"Error details save in: {log_file}")
-
-if __name__ == "__main__":
-    input_path = r"C:\Users\marti\Documents\datos prueba\prueba_bruker\20260306_125921_B060326_WTF1_d10_DCE_1_1"
-    output_path = r"C:\Users\marti\Documents\datos prueba\prueba_bruker"
-    skip_existing = True  # False if we want to overwrite
-
-    print("-" * 50)
-    print("Starting the Bruker to Nifti transformation")
-    print(f"Input: {Path(input_path).absolute()}")
-    print(f"Output:  {Path(output_path).absolute()}")
-    print("-" * 50)
-
-    convert_studies_from_bruker(
-        input_dir=input_path,
-        output_dir=output_path,
-        skip_existing=skip_existing
-    )
-
-    print("\n" + "=" * 50)
-    print("PROCESS FINISHED")
-    print(f"CHECK THE FOLDER: {output_path}/sourcedata")
-
-    log_path = Path(output_path) / "conversion_report.log"
-    if log_path.exists():
-        print(f"ERROR DETECTED, CHECK: {log_path}")
-    else:
-        print("EVERYTHING WENT WELL")
-    print("=" * 50)
