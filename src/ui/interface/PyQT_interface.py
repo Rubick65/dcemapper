@@ -26,7 +26,7 @@ window_minSize = QSize(1125, 500)
 
 image_in_selector_maxSize = QSize(90, 90)
 selector_maxWidth = 480
-selector_minWidth = 150
+selector_minWidth = 200
 
 amount_image_selector_in_row = 2
 
@@ -312,12 +312,13 @@ class MainWindow(QMainWindow):
         Reset of the default sizes of each container
         """
         if self.main_splitter:
-            self.main_splitter.setSizes([200, 475, 325])
+            total_w = self.width()
+            self.main_splitter.setSizes([int(total_w * 0.2), int(total_w * 0.4), int(total_w * 0.4)])
         try:
             v_splitters = self.right_container.findChildren(QSplitter)
             for vs in v_splitters:
                 if vs.orientation() == Qt.Orientation.Vertical:
-                    vs.setSizes([700, 300])
+                    vs.setSizes([700, 300]) #Size of graphic and record layout
         except Exception:
             pass
 
@@ -401,8 +402,10 @@ class MainWindow(QMainWindow):
                 self.stop_movie_mode()
 
         if event.type() == event.Type.Resize:
+            self.stop_movie_mode()
             if obj == self.left_container:
                 self.adjust_selector_columns()
+
 
         return super().eventFilter(obj, event)
 
@@ -537,6 +540,7 @@ class MainWindow(QMainWindow):
         v_splitter.addWidget(self.graphic)
 
         record_group_widget = QWidget()
+        record_group_widget.installEventFilter(self)
         record_v_layout = QVBoxLayout(record_group_widget)
         record_v_layout.setContentsMargins(0, 5, 0, 0)
 
@@ -566,6 +570,8 @@ class MainWindow(QMainWindow):
         main_v_layout.addWidget(v_splitter)
 
         container.setWidget(content_widget)
+        container.installEventFilter(self)
+
         return container
 
     def main_image_layout(self, data, subject_name):
@@ -603,6 +609,7 @@ class MainWindow(QMainWindow):
         self.toolbar.roi_menu.selected_text_signal.connect(self.change_roi_selector)
         self.toolbar.roi_menu.deactivate_roi_selection_signal.connect(self.deactivate_roi_selection)
         self.toolbar.previous_roi_signal.connect(self.go_to_previous_roi)
+        container.installEventFilter(self)
 
         return container
 
