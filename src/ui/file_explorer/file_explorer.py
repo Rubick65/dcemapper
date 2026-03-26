@@ -1,4 +1,3 @@
-import os
 import sys
 from pathlib import Path
 
@@ -6,7 +5,6 @@ from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QAction, QActionGroup
 from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QListWidget, QGridLayout, QWidget, \
     QVBoxLayout, QMenuBar, QMenu
-from scipy.differentiate import derivative
 
 from src.io.bruker_conversion import convert_studies_from_bruker
 from src.ui.file_explorer.shortcuts_menu import ShortcutsMenu

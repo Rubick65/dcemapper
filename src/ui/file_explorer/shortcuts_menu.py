@@ -40,7 +40,6 @@ class ShortcutsMenu(QDialog):
             self.table.setItem(row, 0, item_key)
             self.table.setItem(row, 1, item_info)
 
-        #self.table.resizeColumnToContents(0)
 
 
 def main():
