@@ -4,11 +4,6 @@ import numpy as np
 from src.utils.utils import is_valid_nifti
 
 
-def save_nifti(data, affine, header):
-    nifti_img = nib.Nifti1Image(data, affine, header)
-    nib.save(nifti_img, "test_nifti.nii.gz")
-
-
 def load_nifti(path: str):
     is_valid_nifti(path)
 

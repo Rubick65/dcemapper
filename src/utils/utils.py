@@ -122,7 +122,14 @@ def show_bias_field_correction_ask(original_image, corrected_image, log_bias_fie
 
 
 def rename_associated_files(nifti_filename):
+    """
+    Rename files after being preprocessed
+    :param nifti_filename: Name of the nifti file
+    :return:
+    """
+    # If preproc is in the nifti file name
     if "_preproc" in nifti_filename:
+        # Get´s the different files
         json_file = nifti_filename.replace("_preproc.nii.gz", ".json")
         bval_file = nifti_filename.replace("_preproc.nii.gz", ".bval")
         bvec_file = nifti_filename.replace("_preproc.nii.gz", ".bvec")
@@ -133,29 +140,25 @@ def rename_associated_files(nifti_filename):
                     nifti_filename.replace("nii.gz", associated_file.split(".")[-1]), )
 
 
-def activate_selector(selected_selector: _SelectorWidget):
-    selected_selector.set_active(True)
-    return selected_selector
-
-
-def deactivate_selector(selected_selector: _SelectorWidget):
-    selected_selector.set_active(False)
-
-
-def get_modality_nii_acq(nii_file):
-    if "_DCE_acq" in nii_file:
-        return "DCE map"
-    else:
-        return None
-
-
 def is_nii(filename):
+    """
+    Check if a file is a valid NifTi
+    :param filename: Name of the file
+    :return: True if is a valid NifTi file, False otherwise
+    """
     if not isinstance(filename, str):
         filename = str(filename)
+
     return filename.endswith(".nii") or filename.endswith(".nii.gz")
 
 
 def create_output_folder(subject, derivatives_folder):
+    """
+    Creat derivatives folder
+    :param subject: Subject ID for naming the folder
+    :param derivatives_folder: Where derivatives are saved
+    :return: Path to the output folder
+    """
     output_folder = os.path.join(derivatives_folder, subject)
 
     if not os.path.exists(output_folder):
