@@ -25,7 +25,8 @@ from src.utils.utils import create_output_folder
 window_minSize = QSize(1125, 500)
 
 image_in_selector_maxSize = QSize(90, 90)
-selector_minWidth = 280
+selector_maxWidth = 480
+selector_minWidth = 150
 
 amount_image_selector_in_row = 2
 
@@ -71,6 +72,8 @@ class MainWindow(QMainWindow):
         self.movie_timer.timeout.connect(self.next_movie_frame)
 
         self.left_container = None
+        self.image_widgets = []
+        self.current_columns = 0
         self.mid_container = None
         self.right_container = None
 
@@ -124,12 +127,11 @@ class MainWindow(QMainWindow):
         roi_slices = get_nifti_slices(self.data)
         self.update_widgets(roi_slices)
 
-    def set_one_file(self, nifty_path):
-        if nifty_path:
-            path_obj = Path(nifty_path)
-
-            self.current_subject = path_obj.parent.parent.name
-            self.set_nifti(nifty_path)
+    #def set_one_file(self, nifty_path):
+    #    if nifty_path:
+    #        path_obj = Path(nifty_path)
+    #        self.current_subject = path_obj.parent.parent.name
+    #        self.set_nifti(nifty_path)
 
     def set_various_files(self, nifty_data):
         nifty_path, derivative_folder = nifty_data
@@ -183,6 +185,8 @@ class MainWindow(QMainWindow):
         self.current_mask_counter = -1
         self.current_roi = None
 
+        self.image_widgets = []
+
         self.nifty_path = nifty_path
         self.data, _ = load_nifti(self.nifty_path)
         self.original_data = self.data.copy()
@@ -204,13 +208,13 @@ class MainWindow(QMainWindow):
         self.main_splitter.addWidget(self.right_container)
 
         # To prevent that the containers collapse each to other
-        self.main_splitter.setCollapsible(0, False)
+        self.main_splitter.setCollapsible(0, True)
         self.main_splitter.setCollapsible(1, False)
         self.main_splitter.setCollapsible(2, False)
 
         total_w = self.width()
         # Sizes of splitter containers (mid,right)
-        self.main_splitter.setSizes([int(total_w * 0.6), int(total_w * 0.4)])
+        self.main_splitter.setSizes([int(total_w * 0.2), int(total_w * 0.4), int(total_w * 0.4)])
 
         self.main_layout.addWidget(self.main_splitter)
         self.top_bar.activate()
@@ -258,8 +262,7 @@ class MainWindow(QMainWindow):
 
         current_t = self.canvas.current_t
         if current_t < self.canvas.max_t:
-            if self.movie_timer.isActive():
-                self.movie_timer.stop()
+            self.stop_movie_mode()
             next_t = current_t + 1
             self.slider_t.setValue(next_t)
 
@@ -269,12 +272,14 @@ class MainWindow(QMainWindow):
 
         current_t = self.canvas.current_t
         if current_t > 0:
-            if self.movie_timer.isActive():
-                self.movie_timer.stop()
+            self.stop_movie_mode()
             next_t = current_t - 1
             self.slider_t.setValue(next_t)
 
     def init_shortcuts(self):
+        """
+        To clear and create keyboard shortcuts every time a file is opened
+        """
         self.cleanup_shortcuts()
         shortcuts = {
             Qt.Key.Key_Left: self.toolbar.go_back,
@@ -325,6 +330,9 @@ class MainWindow(QMainWindow):
             self.movie_timer.start(self.movie_speed)
 
     def next_movie_frame(self):
+        """
+        To advance the T of the nifti image at the set frame rate
+        """
         if not self.canvas or self.data is None:
             return
 
@@ -384,6 +392,10 @@ class MainWindow(QMainWindow):
         if event.type() == event.Type.MouseButtonPress:
             if obj == self.slider_t or obj == self.slider_t_input:
                 self.stop_movie_mode()
+
+        if event.type() == event.Type.Resize:
+            if obj == self.left_container:
+                self.adjust_selector_columns()
 
         return super().eventFilter(obj, event)
 
@@ -485,7 +497,7 @@ class MainWindow(QMainWindow):
         # We add and event to each image to update the main image with this image z value
         image_container.image_clicked.connect(lambda: self.update_main_canvas_by_index_click(index))
 
-        return container_widget
+        return container_widget, image_container
 
     def graphic_layout(self):
         """
@@ -576,6 +588,7 @@ class MainWindow(QMainWindow):
         container.setMinimumSize(main_image_minSize)
         container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
+        #To prioritize focus on this window whenever possible
         container.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
         container.setLayout(layout)
@@ -619,9 +632,7 @@ class MainWindow(QMainWindow):
         if text_val:
             new_t = int(text_val)
             self.slider_t.setValue(new_t)
-
-            if self.movie_timer.isActive():
-                self.movie_timer.stop()
+            self.stop_movie_mode()
 
     def update_fps_from_slider(self, fps_value):
         """
@@ -638,8 +649,7 @@ class MainWindow(QMainWindow):
         else:
             self.movie_speed = 1000
 
-        if self.movie_timer.isActive():
-            self.movie_timer.stop()
+        self.stop_movie_mode()
 
     def update_fps_from_text(self):
         """
@@ -649,8 +659,7 @@ class MainWindow(QMainWindow):
         if text_val:
             new_fps = int(text_val)
             self.slider_fps.setValue(new_fps)
-            if self.movie_timer.isActive():
-                self.movie_timer.stop()
+            self.stop_movie_mode()
 
     def stop_movie_mode(self):
         if self.movie_timer.isActive():
@@ -715,6 +724,7 @@ class MainWindow(QMainWindow):
         """
         container_widget = QWidget()
         container_widget.setMinimumWidth(selector_minWidth)
+        container_widget.setMaximumWidth(selector_maxWidth)
         layout = QVBoxLayout(container_widget)
 
         input_row_layout = QHBoxLayout()
@@ -766,37 +776,55 @@ class MainWindow(QMainWindow):
 
         return container_widget, slider, line_edit
 
+    def adjust_selector_columns(self):
+        if self.data is None or self.selector_layout is None:
+            return
+
+        current_width = self.left_container.width()
+
+        new_amount = max(1, current_width // 110)
+
+        global amount_image_selector_in_row
+
+        if new_amount != amount_image_selector_in_row and new_amount % 2 == 0:
+            amount_image_selector_in_row = new_amount
+            roi_slices = get_nifti_slices(self.data)
+            self.update_image_selector(roi_slices)
+
     def update_image_selector(self, images_data):
-        """
-        Function to create all the images in the image selector
-        :param images_data: data of each image
-        """
-        # We clean the selector
-        self.clear_layout(self.selector_layout)
+        global amount_image_selector_in_row
+        #If is the first time that we create the selector
+        if not self.image_widgets or len(self.image_widgets) != len(images_data) or self.current_columns != amount_image_selector_in_row:
 
-        # For each image in the data, we create a row according to the quantity we specify
-        for i in range(0, len(images_data), amount_image_selector_in_row):
-            row_widget = QWidget()
-            row_layout = QHBoxLayout(row_widget)
-            row_layout.setContentsMargins(0, 0, 0, 0)
+            self.current_columns = amount_image_selector_in_row
+            self.image_widgets = []
+            self.clear_layout(self.selector_layout)
 
-            # From the beginning of this row to the indicated amount
-            row_images = images_data[i:i + amount_image_selector_in_row]
+            for i in range(0, len(images_data), amount_image_selector_in_row):
+                row_widget = QWidget()
+                row_layout = QHBoxLayout(row_widget)
+                row_layout.setContentsMargins(0, 0, 0, 0)
 
-            for j, current_image in enumerate(row_images):
-                global_index = i + j
-                image = self.selector_image_creation(current_image, image_in_selector_maxSize, global_index)
-                row_layout.addWidget(image)
-                row_layout.addSpacing(50)
+                row_images = images_data[i:i + amount_image_selector_in_row]
 
-            if len(row_images) < amount_image_selector_in_row:
-                for _ in range(amount_image_selector_in_row - len(row_images)):
-                    spacer = QWidget()
-                    spacer.setFixedSize(image_in_selector_maxSize)
-                    row_layout.addWidget(spacer, 0)
-                    row_layout.addSpacing(50)
+                for j, current_image in enumerate(row_images):
+                    global_index = i + j
+                    container, img_widget = self.selector_image_creation(current_image, image_in_selector_maxSize,global_index)
+                    self.image_widgets.append(img_widget)
+                    row_layout.addWidget(container)
+                    row_layout.addStretch()
 
-            self.selector_layout.addWidget(row_widget)
+                self.selector_layout.addWidget(row_widget)
+
+        #If the left container it was already created, we update the images instead of creating them
+        else:
+            for i, current_image in enumerate(images_data):
+                img_widget = self.image_widgets[i]
+                norm_img = self.normalize_img(np.real(current_image))
+                height, width = norm_img.shape
+                q_img = QImage(norm_img.data, width, height, width, QImage.Format.Format_Grayscale8).copy()
+                pixmap = QPixmap.fromImage(q_img)
+                img_widget.setPixmap(pixmap)
 
     def image_selector_layout(self, images_data):
         """
@@ -805,7 +833,8 @@ class MainWindow(QMainWindow):
         :return: QScroll with all the images
         """
         main_left_widget = QWidget()
-        main_left_widget.setMaximumWidth(selector_minWidth)
+        main_left_widget.setMaximumWidth(selector_maxWidth)
+        main_left_widget.setMinimumWidth(selector_minWidth)
         main_left_layout = QVBoxLayout(main_left_widget)
         main_left_layout.setContentsMargins(0, 0, 0, 0)
 
@@ -832,6 +861,7 @@ class MainWindow(QMainWindow):
         self.update_image_selector(images_data)
 
         scroll = QScrollArea()
+        scroll.setMaximumWidth(selector_maxWidth)
         scroll.setMinimumWidth(selector_minWidth)
         scroll.setWidgetResizable(True)
 
@@ -839,6 +869,7 @@ class MainWindow(QMainWindow):
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll.setWidget(container)
         main_left_layout.addWidget(scroll)
+        main_left_widget.installEventFilter(self)
 
         return main_left_widget
 
