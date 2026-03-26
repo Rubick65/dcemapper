@@ -1,15 +1,15 @@
 import nibabel as nib
-import numpy as np
 
 from src.utils.utils import is_valid_nifti
 
 
-def save_nifti(data, affine, header):
-    nifti_img = nib.Nifti1Image(data, affine, header)
-    nib.save(nifti_img, "test_nifti.nii.gz")
-
-
 def load_nifti(path: str):
+    """
+    Load nifti image
+    :param path: Path to nifti image
+    :return: Numpy array and nifti image
+    """
+    # Check if file is a valid nifti
     is_valid_nifti(path)
 
     # Get nifti image from the path
@@ -22,15 +22,11 @@ def load_nifti(path: str):
 
 
 def get_nifti_slices(data, current_t=0):
+    """
+    Gets NifTi slices at current time
+    :param data: Numpy array with nifti image as data
+    :param current_t: Current time index
+    :return: Numpy array with sliced nifti image at current time
+    """
     slice_max = data.shape[2]
     return [data[:, :, slice_idx, current_t].T for slice_idx in range(slice_max)]
-
-    # def show_nifti_info(img, data):
-    header = img.header
-
-    print(data.shape)
-    print(f"Min intesity: {np.min(data)}")
-    print(f"Max intesity: {np.max(data)}")
-    print(f"Mean: {np.mean(data)}")
-
-    print(header)

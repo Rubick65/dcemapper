@@ -128,12 +128,4 @@ class NiftiToolbar(NavigationToolbar):
 
         self.addAction(previous_roi_action)
 
-    # def edit_parameters(self):
-    #    super().edit_parameters()
-    #    self.canvas.update_cmap_text(self.get_current_cmap_name())
 
-    # def get_current_cmap_name(self):
-    #    images = self.canvas.figure.gca().get_images()
-    #    if images:
-    #        return images[0].get_cmap().name
-    #    return "None"
