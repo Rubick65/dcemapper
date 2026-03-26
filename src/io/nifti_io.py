@@ -1,5 +1,4 @@
 import nibabel as nib
-import numpy as np
 
 from src.utils.utils import is_valid_nifti
 

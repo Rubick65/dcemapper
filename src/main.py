@@ -1,6 +1,6 @@
 import os
 from nibabel.testing import data_path
-from src.io.nifti_io import load_nifti, save_nifti
+from src.io.nifti_io import load_nifti
 
 
 def main():

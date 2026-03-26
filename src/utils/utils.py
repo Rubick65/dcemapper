@@ -1,7 +1,6 @@
 import os
 
 import matplotlib
-from matplotlib.widgets import _SelectorWidget
 
 from src.visualization.filter_visualization import ask_user_parameters
 
