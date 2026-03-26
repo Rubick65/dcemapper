@@ -91,7 +91,6 @@ def update_polygon_mask(full_mask, polygon_coords, z_index):
         h_big, w_big = h * factor, w * factor
         coords_big = np.array(polygon_coords) * factor
 
-
         rr, cc = polygon(coords_big[:, 0], coords_big[:, 1], shape=(h_big, w_big))
         mask_big = np.zeros((h_big, w_big), dtype=float)
         mask_big[rr, cc] = 1.0
