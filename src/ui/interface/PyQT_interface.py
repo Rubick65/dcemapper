@@ -972,7 +972,7 @@ class MainWindow(QMainWindow):
             self.canvas.update_image(self.data)
 
     def clear_current_roi(self):
-        if hasattr(self, 'current_roi') and self.current_roi is not None:
+        if self.current_roi is not None:
             self.current_roi.set_active(False)
             self.current_roi.set_visible(False)
             self.current_roi = None
@@ -980,7 +980,6 @@ class MainWindow(QMainWindow):
 
     def change_roi_selector(self, selected_roi):
         self.selected_roi = selected_roi
-        self.cancel_roi()
         self.clear_current_roi()
         match selected_roi:
             case "r":

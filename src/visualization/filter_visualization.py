@@ -4,6 +4,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QDialog, QApplication, QDialogButtonBox, QVBoxLayout, QLabel, \
     QLineEdit
 
+
 class ClickLabel(QLineEdit):
     clicked = pyqtSignal()
 
@@ -13,11 +14,11 @@ class ClickLabel(QLineEdit):
 
 
 class UserParameterDialog(QDialog):
-    input_params = {}
-    value_signal = {}
 
     def __init__(self, parameter_dict, filter_name):
         super().__init__()
+        self.input_params = {}
+        self.value_signal = {}
         self.parameter_dict = parameter_dict
         self.filter_name = filter_name
         self.initUI()
