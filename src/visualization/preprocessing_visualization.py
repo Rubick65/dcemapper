@@ -40,7 +40,7 @@ class PreprocessingVisual(QDialog):
     Popup window for showing preprocessed data
     """
 
-    def __init__(self, figure, data, retry=True, parent=None, question_label_text="Are you happy with the results?"):
+    def __init__(self, figure, retry=True, parent=None, question_label_text="Are you happy with the results?"):
         """
         Initialize preprocessing visual window
         :param figure: Figure that is going to be shown in the window
@@ -54,7 +54,6 @@ class PreprocessingVisual(QDialog):
         self.figure = figure
         self.toolbar = None
         self.retry = retry
-        self.data = data
 
         self.initUI()
 
@@ -156,18 +155,17 @@ class PreprocessingVisual(QDialog):
             )
 
 
-def init_view(figure, retry, data):
+def init_view(figure, retry=True):
     """
     Initialize the preprocessing visualization window
     :param figure: Figure that is going to be shown in the window
     :param retry: If retry option is active or not
-    :param data: numpy array of the figure
     :return: Boolean, indicating if the user wants to retry or not
     """
     # Creation of the app
     app = QApplication.instance() or QApplication(sys.argv)
     # Creation of the window instance
-    window = PreprocessingVisual(figure, data, retry)
+    window = PreprocessingVisual(figure, retry)
     # Execute the window and get the response code
     response_code = window.exec()
 

@@ -84,7 +84,7 @@ def create_general_preprocess_output(original_image, denoised_image, output_text
     ax.flat[2].imshow(rms_diff.T, cmap="gray", interpolation="none")
     ax.flat[2].set_title(f"{last_text}")
 
-    return init_view(fig1, retry, original_image)
+    return init_view(fig1, retry)
 
 
 def show_bias_field_correction_ask(original_image, corrected_image, log_bias_field):
