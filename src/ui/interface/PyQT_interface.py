@@ -37,9 +37,7 @@ name_current_dir = os.path.dirname(os.path.abspath(__file__))
 class MainWindow(QMainWindow):
     def __init__(self, nifty_path=None):
         super().__init__()
-        self.mask_history = []
         self.file_list = None
-        self.current_mask_counter = -1
         self.setWindowTitle("dcemapper")
         self.setMinimumSize(window_minSize)
         self.screen_size = self.screen().availableGeometry()  # Window size
@@ -78,6 +76,10 @@ class MainWindow(QMainWindow):
         self.main_splitter = None
 
         self.current_roi = None
+        self.roi_coords = None
+        self.vertices = None
+        self.ellipsis_center = None
+        self.radius = None
         self.roi_selector_list = []
         self.selected_roi = ""
         self.top_bar = TopMenu()
@@ -293,7 +295,7 @@ class MainWindow(QMainWindow):
             Qt.Key.Key_F: self.toggle_fullscreen,
             "Ctrl+Z": self.go_to_previous_roi,
             Qt.Key.Key_Escape: self.cancel_roi,
-            Qt.Key.Key_Tab: self.save_roi_state
+            Qt.Key.Key_Tab: self.save_roi_state,
         }
         for key, callback in shortcuts.items():
             shortcut = QShortcut(QKeySequence(key), self)
@@ -601,13 +603,16 @@ class MainWindow(QMainWindow):
 
     def cancel_roi(self):
         if self.current_roi and self.current_roi.get_visible():
+            self.current_roi.set_visible(False)
+            self.current_roi.set_visible(True)
+
             self.current_roi.clear()
 
     def save_roi_state(self):
         if self.current_roi and self.current_roi.get_visible():
+            self.calculate_selected_roi()
             self.update_canvas_with_roi()
             self.cancel_roi()
-
 
     def update_time_from_slider(self, t_value):
         """
@@ -862,11 +867,11 @@ class MainWindow(QMainWindow):
         ax = self.canvas.axes
 
         self.current_roi = RectangleSelector(ax, self.on_rectangle_select,
-                                             useblit=False,
+                                             useblit=True,
                                              button=[1],
                                              minspanx=5, minspany=5,
                                              spancoords='pixels',
-                                             interactive=True, props=dict(fill=False))
+                                             interactive=True, props=dict(color="cyan", fill=False))
 
     def create_elliptical_selector(self):
         ax = self.canvas.axes
@@ -876,7 +881,7 @@ class MainWindow(QMainWindow):
                                            button=[1],
                                            minspanx=5, minspany=5,
                                            spancoords='pixels',
-                                           interactive=True, props=dict(fill=False))
+                                           interactive=True, props=dict(color="cyan", fill=False))
 
     def create_polygon_selector(self):
         ax = self.canvas.axes
@@ -891,14 +896,7 @@ class MainWindow(QMainWindow):
                                            useblit=True, props=style_config)
 
     def on_rectangle_select(self, eclick, erelease):
-        roi_coords = (eclick.xdata, eclick.ydata, erelease.xdata, erelease.ydata)
-        z_index = self.canvas.current_z
-        self.full_mask = update_rectangular_mask(roi_coords, self.full_mask, z_index)
-        # self.update_canvas_with_roi()
-
-    def update_mask_history(self):
-        self.mask_history.append(self.full_mask)
-        self.current_mask_counter += 1
+        self.roi_coords = (eclick.xdata, eclick.ydata, erelease.xdata, erelease.ydata)
 
     def on_ellipsis_select(self, eclick, erelease):
         x1, y1 = eclick.xdata, eclick.ydata
@@ -908,19 +906,11 @@ class MainWindow(QMainWindow):
         a = abs(x2 - x1) / 2
         b = abs(y2 - y1) / 2
 
-        ellipsis_center = (xc, yc)
-        radius = (a, b)
-
-        z_index = self.canvas.current_z
-        # full_mask, ellipsis_center, radius, z_index
-        self.full_mask = update_elliptical_mask(self.full_mask, ellipsis_center, radius, z_index)
-        # self.update_mask_history(mask)
-        # self.update_canvas_with_roi()
+        self.ellipsis_center = (xc, yc)
+        self.radius = (a, b)
 
     def on_polygon_select(self, vertices):
-        z_index = self.canvas.current_z
-        self.full_mask = update_polygon_mask(self.full_mask, vertices, z_index)
-        #self.update_canvas_with_roi()
+        self.vertices = vertices
 
     def get_current_slice(self):
         return self.data[:, :, self.canvas.current_z, 0]
@@ -950,8 +940,17 @@ class MainWindow(QMainWindow):
         if self.canvas:
             self.canvas.update_image(self.data)
 
+    def clear_current_roi(self):
+        if hasattr(self, 'current_roi') and self.current_roi is not None:
+            self.current_roi.set_active(False)
+            self.current_roi.set_visible(False)
+            self.current_roi = None
+            self.canvas.draw_idle()
+
     def change_roi_selector(self, selected_roi):
         self.selected_roi = selected_roi
+        self.cancel_roi()
+        self.clear_current_roi()
         match selected_roi:
             case "r":
                 self.create_rectangle_selector()
@@ -959,6 +958,22 @@ class MainWindow(QMainWindow):
                 self.create_elliptical_selector()
             case "p":
                 self.create_polygon_selector()
+
+
+    def calculate_selected_roi(self):
+        z_index = self.canvas.current_z
+        match self.selected_roi:
+            case "r":
+                self.full_mask = update_rectangular_mask(self.roi_coords, self.full_mask, z_index)
+                self.roi_coords = None
+            case "e":
+                self.full_mask = update_elliptical_mask(self.full_mask, self.ellipsis_center, self.radius, z_index)
+                self.ellipsis_center = None
+                self.radius = None
+            case "p":
+                self.full_mask = update_polygon_mask(self.full_mask, self.vertices, z_index)
+                self.vertices = None
+
 
     def deactivate_roi_selection(self):
         self.current_roi = None

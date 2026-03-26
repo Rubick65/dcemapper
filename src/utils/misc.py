@@ -38,5 +38,8 @@ shortcuts_dict = {
     "Z": "Toggle interactive Zoom tool",
     "M": "Toggle interactive Pan (Move) tool",
     "F": "Toggle Full Screen mode",
-    "Ctrl + Z": "Reset segmentation mask in current slice"
+    "Ctrl + Z": "Reset segmentation mask in current slice",
+    "Escape": "Cancel current ROI selection",
+    "Tab": "Save current ROI",
+
 }

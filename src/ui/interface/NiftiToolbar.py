@@ -46,7 +46,6 @@ class RoiMenu(QMenu):
 
         actions = self.group.actions()
         if not actions:
-
             actions = self.actions()
 
         for action in actions:
