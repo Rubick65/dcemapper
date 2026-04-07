@@ -136,7 +136,7 @@ class MainWindow(QMainWindow):
             nifty_path = nifty_path[1]
         else:
             # If it is a single file, we extract the subject name from the file structure
-            self.current_subject = Path(nifty_path).parent.parent.name
+            self.current_subject = get_correct_subject(Path(nifty_path))
 
         self.derivative_folder = derivative_folder
 
@@ -180,8 +180,6 @@ class MainWindow(QMainWindow):
             self.update_image_selector(np.array(roi_slices_t0))
         else:
             self.left_container = self.image_selector_layout(np.array(roi_slices_t0))
-            # If it is a single file, we extract the subject name from the file structure
-            self.current_subject = get_correct_subject(Path(nifty_path))
 
             if self.main_splitter:
                 self.main_splitter.insertWidget(0, self.left_container)
