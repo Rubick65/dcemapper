@@ -10,6 +10,7 @@ from src.io.bruker_conversion import convert_studies_from_bruker
 from src.ui.file_explorer.shortcuts_menu import ShortcutsMenu
 from src.utils.get_file_to_process import get_files_to_process
 from src.utils.misc import denoise_filters_dict, file_options_dict
+from src.utils.utils import get_correct_subject
 
 
 class NonePersistentMenu(QMenu):
@@ -275,6 +276,8 @@ class FileMenu(PersistentMenu):
 
                     derivative_folder = str(Path(f[0]).parent)
                     self.one_file_signal.emit((f[0], derivative_folder))
+                    self.next_action.setEnabled(False)
+                    self.previous_action.setEnabled(False)
 
                 case "br":
                     path = self.file_selector()
@@ -297,6 +300,7 @@ class FileMenu(PersistentMenu):
     def get_list_of_files_to_process(self, files_to_process):
         for file, archive in files_to_process.items():
             archive_text = str(archive[0])
+            file = get_correct_subject(archive[0])
             self.file_list.append((file, archive_text))
 
     def activate_next_action(self):
@@ -325,6 +329,9 @@ class FileMenu(PersistentMenu):
 
         if self.current_file_counter < len(self.file_list) - 1:
             self.next_action.setEnabled(True)
+
+    def change_current_file(self, new_file):
+        self.file_list[self.current_file_counter] = new_file
 
 
 class TopMenu(QMenuBar):

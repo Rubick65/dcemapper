@@ -19,7 +19,7 @@ from src.ui.Images_Class.IntensityGraph import IntensityGraph
 from src.ui.Images_Class.NiftiCanvas import NiftiCanvas
 from src.ui.file_explorer.file_explorer import TopMenu
 from src.ui.interface.NiftiToolbar import NiftiToolbar
-from src.utils.utils import create_output_folder
+from src.utils.utils import create_output_folder, get_correct_subject
 
 # -----------------CONSTANTS-----------------
 window_minSize = QSize(1125, 500)
@@ -163,6 +163,7 @@ class MainWindow(QMainWindow):
 
         roi_slices = get_nifti_slices(self.data)
         self.update_widgets(roi_slices)
+        self.top_bar.file_menu.change_current_file(data)
 
     # def set_one_file(self, nifty_path):
     #    if nifty_path:
@@ -179,6 +180,8 @@ class MainWindow(QMainWindow):
             self.update_image_selector(np.array(roi_slices_t0))
         else:
             self.left_container = self.image_selector_layout(np.array(roi_slices_t0))
+            # If it is a single file, we extract the subject name from the file structure
+            self.current_subject = get_correct_subject(Path(nifty_path))
 
             if self.main_splitter:
                 self.main_splitter.insertWidget(0, self.left_container)
