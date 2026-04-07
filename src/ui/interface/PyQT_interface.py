@@ -27,9 +27,6 @@ window_minSize = QSize(1125, 500)
 image_in_selector_maxSize = QSize(90, 90)
 selector_maxWidth = 480
 selector_minWidth = 200
-
-amount_image_selector_in_row = 2
-
 main_image_minSize = QSize(300, 400)
 
 name_current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -73,6 +70,7 @@ class MainWindow(QMainWindow):
         self.movie_timer.timeout.connect(self.next_movie_frame)
 
         self.left_container = None
+        self.amount_image_selector_in_row = 2
         self.image_widgets = []
         self.current_columns = 0
         self.mid_container = None
@@ -188,22 +186,21 @@ class MainWindow(QMainWindow):
             self.canvas.update_image(self.data)
 
     def update_image_selector(self, images_data):
-        global amount_image_selector_in_row
 
         # If is the first time that we create the selector
         if not self.image_widgets or len(self.image_widgets) != len(
-                images_data) or self.current_columns != amount_image_selector_in_row:
+                images_data) or self.current_columns != self.amount_image_selector_in_row:
 
-            self.current_columns = amount_image_selector_in_row
+            self.current_columns = self.amount_image_selector_in_row
             self.image_widgets = []
             self.clear_layout(self.selector_layout)
 
-            for i in range(0, len(images_data), amount_image_selector_in_row):
+            for i in range(0, len(images_data), self.amount_image_selector_in_row):
                 row_widget = QWidget()
                 row_layout = QHBoxLayout(row_widget)
                 row_layout.setContentsMargins(0, 0, 0, 0)
 
-                row_images = images_data[i:i + amount_image_selector_in_row]
+                row_images = images_data[i:i + self.amount_image_selector_in_row]
 
                 for j, current_image in enumerate(row_images):
                     global_index = i + j
@@ -629,8 +626,7 @@ class MainWindow(QMainWindow):
         :param z: current Slice (Z)
         :param intensitis_t: Intensities in all the times
         """
-        intensity_increase = ((intensitis_t[-1] - intensitis_t[0]) / intensitis_t[0] * 100) if intensitis_t[
-                                                                                                   0] != 0 else 0
+        intensity_increase = ((intensitis_t[-1] - intensitis_t[0]) / intensitis_t[0] * 100) if intensitis_t[0] != 0 else 0
         info = f"Click = {self.record_layout.count() + 1} | X = {x} | Y = {y} | Z = {z} | Intensity increase = {intensity_increase}"
         label = QLabel(info)
         # We add the info in the top of the layout
@@ -861,6 +857,9 @@ class MainWindow(QMainWindow):
             Qt.Key.Key_M: self.handle_pan_key,
             Qt.Key.Key_F: self.toggle_fullscreen,
             "Ctrl+Z": self.go_to_previous_roi,
+            "Ctrl+R": self.rectangle_mode,
+            "Ctrl+E": self.elliptical_mode,
+            "Ctrl+P": self.polygon_mode,
             Qt.Key.Key_Escape: self.cancel_roi,
             Qt.Key.Key_Tab: self.save_roi_state,
         }
@@ -947,6 +946,10 @@ class MainWindow(QMainWindow):
 
     def calculate_selected_roi(self):
         z_index = self.canvas.current_z
+
+        if self.selected_roi == "":
+            return
+
         match self.selected_roi:
             case "r":
                 self.full_mask = update_rectangular_mask(self.roi_coords, self.full_mask, z_index)
@@ -958,6 +961,18 @@ class MainWindow(QMainWindow):
             case "p":
                 self.full_mask = update_polygon_mask(self.full_mask, self.vertices, z_index)
                 self.vertices = None
+
+    def rectangle_mode(self):
+        if self.toolbar.roi_menu.already_processed:
+            self.toolbar.roi_menu.activate_roi_by_prefix("r")
+
+    def elliptical_mode(self):
+        if self.toolbar.roi_menu.already_processed:
+            self.toolbar.roi_menu.activate_roi_by_prefix("e")
+
+    def polygon_mode(self):
+        if self.toolbar.roi_menu.already_processed:
+            self.toolbar.roi_menu.activate_roi_by_prefix("p")
 
     def clicked(self, event):
         if event.button == 1:
@@ -991,10 +1006,8 @@ class MainWindow(QMainWindow):
 
         new_amount = max(1, current_width // 110)
 
-        global amount_image_selector_in_row
-
-        if new_amount != amount_image_selector_in_row and new_amount % 2 == 0:
-            amount_image_selector_in_row = new_amount
+        if new_amount != self.amount_image_selector_in_row and new_amount % 2 == 0:
+            self.amount_image_selector_in_row = new_amount
             roi_slices = get_nifti_slices(self.data)
             self.update_image_selector(roi_slices)
 
