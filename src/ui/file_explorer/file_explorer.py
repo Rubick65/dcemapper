@@ -276,6 +276,8 @@ class FileMenu(PersistentMenu):
 
                     derivative_folder = str(Path(f[0]).parent)
                     self.one_file_signal.emit((f[0], derivative_folder))
+                    self.next_action.setEnabled(False)
+                    self.previous_action.setEnabled(False)
 
                 case "br":
                     path = self.file_selector()

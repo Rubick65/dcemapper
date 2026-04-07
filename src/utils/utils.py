@@ -169,10 +169,9 @@ def create_output_folder(subject, derivatives_folder):
 def get_correct_subject(file):
     current_file = file.name
     for i in range(3):
-        if "sub" in current_file:
-            return current_file
         file = file.parent
         current_file = file.name
-
+        if "sub" in current_file:
+            return current_file
     else:
         return current_file
