@@ -43,7 +43,6 @@ class RoiMenu(QMenu):
         self.selected_text_signal.emit(selected_action.text()[0: 1].lower())
 
     def activate_roi_selection(self):
-
         actions = self.group.actions()
         if not actions:
             actions = self.actions()

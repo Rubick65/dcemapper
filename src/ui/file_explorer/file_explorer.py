@@ -331,7 +331,8 @@ class FileMenu(PersistentMenu):
             self.next_action.setEnabled(True)
 
     def change_current_file(self, new_file):
-        self.file_list[self.current_file_counter] = new_file
+        if self.file_list:
+            self.file_list[self.current_file_counter] = new_file
 
 
 class TopMenu(QMenuBar):

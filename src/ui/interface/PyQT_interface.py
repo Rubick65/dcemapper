@@ -36,6 +36,7 @@ name_current_dir = os.path.dirname(os.path.abspath(__file__))
 
 
 class MainWindow(QMainWindow):
+
     def __init__(self, nifty_path=None):
         super().__init__()
         self.file_list = None
@@ -142,6 +143,14 @@ class MainWindow(QMainWindow):
 
         self.set_nifti(nifty_path)
 
+        self.check_for_preprocessed_file(nifty_path)
+
+    def check_for_preprocessed_file(self, file):
+        file_name = Path(file).name
+        if "preproc" in file_name:
+            self.toolbar.roi_menu.activate_roi_selection()
+
+
     def preprocessing(self, selected_preprocess_options):
         denoise_filter, gibbs = selected_preprocess_options
 
@@ -163,6 +172,7 @@ class MainWindow(QMainWindow):
 
         roi_slices = get_nifti_slices(self.data)
         self.update_widgets(roi_slices)
+
         self.top_bar.file_menu.change_current_file(data)
 
     # def set_one_file(self, nifty_path):
@@ -604,7 +614,6 @@ class MainWindow(QMainWindow):
         Upload of the graphic with the pixel data
         :param x: coorX of the pixel image
         :param y: coorY of the pixel image
-        :param value: Other values of the pixel image
         :return: Upload of the graphic
         """
         current_z = self.canvas.current_z
