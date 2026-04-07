@@ -164,3 +164,15 @@ def create_output_folder(subject, derivatives_folder):
         os.makedirs(output_folder, exist_ok=True)
 
     return output_folder
+
+
+def get_correct_subject(file):
+    current_file = file.name
+    for i in range(3):
+        if "sub" in current_file:
+            return current_file
+        file = file.parent
+        current_file = file.name
+
+    else:
+        return current_file
