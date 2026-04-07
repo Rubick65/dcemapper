@@ -16,6 +16,7 @@ class RoiMenu(QMenu):
         self.group = QActionGroup(self)
         self.group.setExclusive(False)
         self.group.triggered.connect(self.handle_exclusivity)
+        self.already_processed = False
         self.initUI()
 
     def initUI(self):
@@ -42,6 +43,12 @@ class RoiMenu(QMenu):
 
         self.selected_text_signal.emit(selected_action.text()[0: 1].lower())
 
+    def activate_roi_by_prefix(self, letter):
+        for action in self.group.actions():
+            if action.text().lower().startswith(letter.lower()):
+                action.trigger()
+                break
+
     def activate_roi_selection(self):
 
         actions = self.group.actions()
@@ -51,7 +58,10 @@ class RoiMenu(QMenu):
         for action in actions:
             action.setEnabled(True)
 
+        self.already_processed = True
         self.update()
+
+
 
 
 class NiftiToolbar(NavigationToolbar):

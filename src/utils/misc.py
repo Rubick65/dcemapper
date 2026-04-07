@@ -39,6 +39,9 @@ shortcuts_dict = {
     "M": "Toggle interactive Pan (Move) tool",
     "F": "Toggle Full Screen mode",
     "Ctrl + Z": "Reset segmentation mask in current slice",
+    "Ctrl + E": "Toggle elliptical ROI tool",
+    "Ctrl + R": "Toggle rectangle ROI tool",
+    "Ctrl + P": "Toggle polygonal ROI tool",
     "Escape": "Cancel current ROI selection",
     "Tab": "Save current ROI",
 
