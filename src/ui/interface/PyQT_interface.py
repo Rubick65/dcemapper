@@ -72,7 +72,6 @@ class MainWindow(QMainWindow):
         self.movie_timer = QTimer()
         self.movie_timer.timeout.connect(self.next_movie_frame)
 
-
         self.left_container = None
         self.image_widgets = []
         self.current_columns = 0
@@ -134,7 +133,7 @@ class MainWindow(QMainWindow):
         roi_slices = get_nifti_slices(self.data)
         self.update_widgets(roi_slices)
 
-    #def set_one_file(self, nifty_path):
+    # def set_one_file(self, nifty_path):
     #    if nifty_path:
     #        path_obj = Path(nifty_path)
     #        self.current_subject = path_obj.parent.parent.name
@@ -322,7 +321,7 @@ class MainWindow(QMainWindow):
             v_splitters = self.right_container.findChildren(QSplitter)
             for vs in v_splitters:
                 if vs.orientation() == Qt.Orientation.Vertical:
-                    vs.setSizes([int(self.total_h * 0.7), int(self.total_h * 0.3)]) #Size of graphic and record layout
+                    vs.setSizes([int(self.total_h * 0.7), int(self.total_h * 0.3)])  # Size of graphic and record layout
         except Exception:
             pass
 
@@ -495,7 +494,7 @@ class MainWindow(QMainWindow):
         height, width = norm_img.shape
         bytes_per_line = width
 
-        q_img = QImage(norm_img.data, width, height, bytes_per_line, QImage.Format.Format_Grayscale8).copy()
+        q_img = QImage(norm_img.tobytes(), width, height, bytes_per_line, QImage.Format.Format_Grayscale8).copy()
         pixmap = QPixmap.fromImage(q_img)
         image_container.setPixmap(pixmap)
 
@@ -604,7 +603,7 @@ class MainWindow(QMainWindow):
         container.setMinimumSize(main_image_minSize)
         container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
-        #To prioritize focus on this window whenever possible
+        # To prioritize focus on this window whenever possible
         container.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
         container.setLayout(layout)
@@ -828,8 +827,10 @@ class MainWindow(QMainWindow):
 
     def update_image_selector(self, images_data):
         global amount_image_selector_in_row
-        #If is the first time that we create the selector
-        if not self.image_widgets or len(self.image_widgets) != len(images_data) or self.current_columns != amount_image_selector_in_row:
+
+        # If is the first time that we create the selector
+        if not self.image_widgets or len(self.image_widgets) != len(
+                images_data) or self.current_columns != amount_image_selector_in_row:
 
             self.current_columns = amount_image_selector_in_row
             self.image_widgets = []
@@ -844,20 +845,21 @@ class MainWindow(QMainWindow):
 
                 for j, current_image in enumerate(row_images):
                     global_index = i + j
-                    container, img_widget = self.selector_image_creation(current_image, image_in_selector_maxSize,global_index)
+                    container, img_widget = self.selector_image_creation(current_image, image_in_selector_maxSize,
+                                                                         global_index)
                     self.image_widgets.append(img_widget)
                     row_layout.addWidget(container)
                     row_layout.addStretch()
 
                 self.selector_layout.addWidget(row_widget)
 
-        #If the left container it was already created, we update the images instead of creating them
+        # If the left container it was already created, we update the images instead of creating them
         else:
             for i, current_image in enumerate(images_data):
                 img_widget = self.image_widgets[i]
                 norm_img = self.normalize_img(np.real(current_image))
                 height, width = norm_img.shape
-                q_img = QImage(norm_img.data, width, height, width, QImage.Format.Format_Grayscale8).copy()
+                q_img = QImage(norm_img.tobytes(), width, height, QImage.Format.Format_Grayscale8).copy()
                 pixmap = QPixmap.fromImage(q_img)
                 img_widget.setPixmap(pixmap)
 
@@ -875,7 +877,7 @@ class MainWindow(QMainWindow):
 
         num_t_points = self.data.shape[3] if self.data is not None else 1
 
-        #Creation of the T and fps sliders
+        # Creation of the T and fps sliders
 
         slider_t_group, self.slider_t, self.slider_t_input = self.slider_label(
             "Time Point (T)", 0, num_t_points - 1, 0,
@@ -1005,7 +1007,6 @@ class MainWindow(QMainWindow):
             case "p":
                 self.create_polygon_selector()
 
-
     def calculate_selected_roi(self):
         z_index = self.canvas.current_z
         match self.selected_roi:
@@ -1019,7 +1020,6 @@ class MainWindow(QMainWindow):
             case "p":
                 self.full_mask = update_polygon_mask(self.full_mask, self.vertices, z_index)
                 self.vertices = None
-
 
     def deactivate_roi_selection(self):
         self.current_roi = None

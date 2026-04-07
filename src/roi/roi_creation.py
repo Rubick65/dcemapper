@@ -11,7 +11,7 @@ def update_rectangular_mask(roi_coords, full_mask, z_index):
 
         new_selection = np.zeros(
             (full_mask.shape[0], full_mask.shape[1]),
-            dtype=float
+            dtype=np.float32
         )
 
         x1, y1, x2, y2 = map(int, map(np.floor, roi_coords))
@@ -64,7 +64,7 @@ def update_elliptical_mask(full_mask, ellipsis_center, radius, z_index):
                 ((yv - yc) ** 2) / (b ** 2)
         )
 
-        mask = (ellipse <= 1).astype(float)
+        mask = (ellipse <= 1).astype(np.float32)
 
         # suavizado real
         smooth_mask = ndimage.gaussian_filter(
@@ -101,7 +101,7 @@ def update_polygon_mask(full_mask, polygon_coords, z_index):
         coords_big = np.array(polygon_coords) * factor
 
         rr, cc = polygon(coords_big[:, 0], coords_big[:, 1], shape=(h_big, w_big))
-        mask_big = np.zeros((h_big, w_big), dtype=float)
+        mask_big = np.zeros((h_big, w_big), dtype=np.float32)
         mask_big[rr, cc] = 1.0
 
         smooth_mask = resize(mask_big, (h, w), order=1, anti_aliasing=True)
