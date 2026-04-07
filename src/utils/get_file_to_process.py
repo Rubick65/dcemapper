@@ -64,14 +64,3 @@ def get_correct_file(sub):
             return file
     return None
 
-
-def main():
-    test_path = r"C:\Users\marti\Documents\datos prueba\archivos_raquel\resomapper_output"
-    files_to_process = get_files_to_process(test_path)
-
-    for file, archive in files_to_process.items():
-        print(f"{file}: {archive}")
-
-
-if __name__ == '__main__':
-    main()
