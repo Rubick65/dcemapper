@@ -997,6 +997,26 @@ class MainWindow(QMainWindow):
             roi_slices = get_nifti_slices(self.data)
             self.update_image_selector(roi_slices)
 
+    #def update_main_canvas_by_index(self, index_z):
+    #    """
+    #    Update of the main canvas image with the Z index
+    #    :param index_z: Current Z index of the slice that we want.
+    #    :return: NiftiCanvas with the current Z
+    #    """
+    #    # If we found the old Canvas, we put the slice we want to see
+    #    if self.canvas:
+    #        self.canvas.set_z(index_z)
+    #        if index_z == 0 and self.movie_timer.isActive():
+    #            self.movie_timer.stop()
+
+    #def get_current_slice(self):
+    #    return self.data[:, :, self.canvas.current_z, 0]
+
+    #def receive_file_list(self, files):
+    #    if files:
+    #        file_path = [str(Path(files)) for files in files]
+    #        self.file_list.addItems(file_path)
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
