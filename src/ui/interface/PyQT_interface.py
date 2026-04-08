@@ -713,7 +713,7 @@ class MainWindow(QMainWindow):
         self.vertices = vertices
 
     def deactivate_roi_selection(self):
-        self.current_roi = None
+        self.clear_current_roi()
 
     def go_to_previous_roi(self):
         z_index = self.canvas.current_z
