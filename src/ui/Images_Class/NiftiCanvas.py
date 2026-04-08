@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 from PyQt6.QtCore import pyqtSignal
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 
-
 class NiftiCanvas(FigureCanvas):
     """
     Class to create a matpplotlib figure in a PyQT6 interface

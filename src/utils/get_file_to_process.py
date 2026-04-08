@@ -2,7 +2,6 @@ from pathlib import Path
 
 from src.utils.utils import is_folder_and_not_occult, is_nii
 
-
 def get_files_to_process(main_path):
     # Paths to source data and derivatives
     root_path = Path(main_path)

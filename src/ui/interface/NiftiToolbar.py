@@ -6,7 +6,6 @@ from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as Navigation
 from src.ui.Images_Class.NiftiCanvas import NiftiCanvas
 from src.utils.misc import roi_actions_dict
 
-
 class RoiMenu(QMenu):
     selected_text_signal = pyqtSignal(str)
     deactivate_roi_selection_signal = pyqtSignal()
@@ -50,7 +49,6 @@ class RoiMenu(QMenu):
                 break
 
     def activate_roi_selection(self):
-
         actions = self.group.actions()
         if not actions:
             actions = self.actions()
