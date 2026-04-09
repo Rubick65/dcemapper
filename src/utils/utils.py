@@ -175,3 +175,21 @@ def get_correct_subject(file):
             return current_file
     else:
         return current_file
+
+
+def normalize_img(img):
+    """
+    Function to normalize the intensity values img for display
+    :param img: numpy array of data image
+    :return: normalize numpy array data
+    """
+    # We normalize the image data to 0-255 range intensity
+    if np.max(img) - np.min(img) != 0:
+        norm_img = (img - np.min(img)) / (np.max(img) - np.min(img)) * 255
+    else:
+        # If the img has no contrast,return a black image
+        norm_img = np.zeros_like(img)
+
+    # Convert the data to unsigned 8-bit integer format for QImage compatibility
+    norm_img = norm_img.astype(np.uint8)
+    return norm_img

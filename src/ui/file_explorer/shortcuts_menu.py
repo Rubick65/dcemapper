@@ -1,8 +1,5 @@
-import sys
-
-from PyQt6.QtWidgets import QDialog, QTableWidget, QTableWidgetItem, QVBoxLayout, QScrollArea, QAbstractItemView, \
-    QApplication
 from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QDialog, QTableWidget, QTableWidgetItem, QVBoxLayout, QScrollArea, QAbstractItemView
 
 from src.utils.misc import shortcuts_dict
 
@@ -40,14 +37,3 @@ class ShortcutsMenu(QDialog):
             self.table.setItem(row, 0, item_key)
             self.table.setItem(row, 1, item_info)
 
-
-
-def main():
-    app = QApplication(sys.argv)
-    window = ShortcutsMenu()
-    window.show()
-    sys.exit(app.exec())
-
-
-if __name__ == '__main__':
-    main()

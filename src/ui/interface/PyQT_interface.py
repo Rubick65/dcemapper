@@ -19,7 +19,7 @@ from src.ui.Images_Class.IntensityGraph import IntensityGraph
 from src.ui.Images_Class.NiftiCanvas import NiftiCanvas
 from src.ui.file_explorer.file_explorer import TopMenu
 from src.ui.interface.NiftiToolbar import NiftiToolbar
-from src.utils.utils import create_output_folder, get_correct_subject
+from src.utils.utils import create_output_folder, get_correct_subject, normalize_img
 
 # -----------------CONSTANTS-----------------
 window_minSize = QSize(1125, 500)
@@ -148,7 +148,6 @@ class MainWindow(QMainWindow):
         if "preproc" in file_name:
             self.toolbar.roi_menu.activate_roi_selection()
 
-
     def preprocessing(self, selected_preprocess_options):
         denoise_filter, gibbs = selected_preprocess_options
 
@@ -172,12 +171,6 @@ class MainWindow(QMainWindow):
         self.update_widgets(roi_slices)
 
         self.top_bar.file_menu.change_current_file(data)
-
-    # def set_one_file(self, nifty_path):
-    #    if nifty_path:
-    #        path_obj = Path(nifty_path)
-    #        self.current_subject = path_obj.parent.parent.name
-    #        self.set_nifti(nifty_path)
 
     def update_widgets(self, roi_slices_t0):
 
@@ -226,7 +219,7 @@ class MainWindow(QMainWindow):
         else:
             for i, current_image in enumerate(images_data):
                 img_widget = self.image_widgets[i]
-                norm_img = self.normalize_img(np.real(current_image))
+                norm_img = normalize_img(np.real(current_image))
                 height, width = norm_img.shape
                 q_img = QImage(norm_img.tobytes(), width, height, QImage.Format.Format_Grayscale8).copy()
                 pixmap = QPixmap.fromImage(q_img)
@@ -246,7 +239,7 @@ class MainWindow(QMainWindow):
         image_container = ClickImage(image_data, size)
 
         # We normalize the img data
-        norm_img = self.normalize_img(np.real(image_data))
+        norm_img = normalize_img(np.real(image_data))
 
         height, width = norm_img.shape
         bytes_per_line = width
@@ -267,23 +260,6 @@ class MainWindow(QMainWindow):
         image_container.image_clicked.connect(lambda: self.update_main_canvas_by_index_click(index))
 
         return container_widget, image_container
-
-    def normalize_img(self, img):
-        """
-        Function to normalize the intensity values img for display
-        :param img: numpy array of data image
-        :return: normalize numpy array data
-        """
-        # We normalize the image data to 0-255 range intensity
-        if np.max(img) - np.min(img) != 0:
-            norm_img = (img - np.min(img)) / (np.max(img) - np.min(img)) * 255
-        else:
-            # If the img has no contrast,return a black image
-            norm_img = np.zeros_like(img)
-
-        # Convert the data to unsigned 8-bit integer format for QImage compatibility
-        norm_img = norm_img.astype(np.uint8)
-        return norm_img
 
     def update_main_canvas_by_index_click(self, index_z):
         """
@@ -635,7 +611,8 @@ class MainWindow(QMainWindow):
         :param z: current Slice (Z)
         :param intensitis_t: Intensities in all the times
         """
-        intensity_increase = ((intensitis_t[-1] - intensitis_t[0]) / intensitis_t[0] * 100) if intensitis_t[0] != 0 else 0
+        intensity_increase = ((intensitis_t[-1] - intensitis_t[0]) / intensitis_t[0] * 100) if intensitis_t[
+                                                                                                   0] != 0 else 0
         info = f"Click = {self.record_layout.count() + 1} | X = {x} | Y = {y} | Z = {z} | Intensity increase = {intensity_increase}"
         label = QLabel(info)
         # We add the info in the top of the layout
@@ -1019,26 +996,6 @@ class MainWindow(QMainWindow):
             self.amount_image_selector_in_row = new_amount
             roi_slices = get_nifti_slices(self.data)
             self.update_image_selector(roi_slices)
-
-    #def update_main_canvas_by_index(self, index_z):
-    #    """
-    #    Update of the main canvas image with the Z index
-    #    :param index_z: Current Z index of the slice that we want.
-    #    :return: NiftiCanvas with the current Z
-    #    """
-    #    # If we found the old Canvas, we put the slice we want to see
-    #    if self.canvas:
-    #        self.canvas.set_z(index_z)
-    #        if index_z == 0 and self.movie_timer.isActive():
-    #            self.movie_timer.stop()
-
-    #def get_current_slice(self):
-    #    return self.data[:, :, self.canvas.current_z, 0]
-
-    #def receive_file_list(self, files):
-    #    if files:
-    #        file_path = [str(Path(files)) for files in files]
-    #        self.file_list.addItems(file_path)
 
 
 if __name__ == "__main__":

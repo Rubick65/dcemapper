@@ -435,14 +435,3 @@ def patch2self_denoising(image, bvals, params, check_params=True):
         ),
         selection,
     )
-
-
-def main():
-    example_file = [r"C:\Users\laboratorio\PycharmProjects\dcemapper\src\test_nifti.nii.gz"]
-    output_file = r"C:\Users\laboratorio\PycharmProjects\dcemapper\src\viewer"
-    empty_list = []
-    denoise_init(example_file, output_file, empty_list)
-
-
-if __name__ == "__main__":
-    main()
