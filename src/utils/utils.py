@@ -193,3 +193,4 @@ def normalize_img(img):
     # Convert the data to unsigned 8-bit integer format for QImage compatibility
     norm_img = norm_img.astype(np.uint8)
     return norm_img
+

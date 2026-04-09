@@ -502,7 +502,6 @@ class MainWindow(QMainWindow):
         if self.canvas:
             self.canvas.set_t(t_value)
 
-
     def update_time_from_text(self):
         """
         Updates the slider based on manual text input
@@ -557,6 +556,7 @@ class MainWindow(QMainWindow):
 
         # Toolbar with custom options
         self.toolbar = NiftiToolbar(self.canvas, self)
+        self.toolbar.check_for_roi_changes_signal.connect(self.check_changes_in_mask)
 
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 20, 0, 0)
@@ -578,6 +578,10 @@ class MainWindow(QMainWindow):
         container.installEventFilter(self)
 
         return container
+
+    def check_changes_in_mask(self):
+        if self.original_data == self.data:
+            self.toolbar.activate_save_roi_action()
 
     def create_graphic(self, x, y, value):
         """

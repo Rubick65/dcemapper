@@ -3,7 +3,6 @@ from PyQt6.QtWidgets import QDialog, QTableWidget, QTableWidgetItem, QVBoxLayout
 
 from src.utils.misc import shortcuts_dict
 
-
 class ShortcutsMenu(QDialog):
     def __init__(self):
         super().__init__()

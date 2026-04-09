@@ -10,7 +10,6 @@ from src.utils.get_file_to_process import get_files_to_process
 from src.utils.misc import denoise_filters_dict, file_options_dict
 from src.utils.utils import get_correct_subject
 
-
 class NonePersistentMenu(QMenu):
 
     def leaveEvent(self, a0):
