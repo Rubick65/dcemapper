@@ -502,9 +502,6 @@ class MainWindow(QMainWindow):
         if self.canvas:
             self.canvas.set_t(t_value)
 
-        # if self.data is not None:
-        #    # We update with the T value the images of the selector
-        #    slices_t = get_nifti_slices(self.data, current_t=t_value)
 
     def update_time_from_text(self):
         """
@@ -675,8 +672,8 @@ class MainWindow(QMainWindow):
         style_config = dict(
             color='cyan',
             linestyle='-',
-            linewidth=2,
-            alpha=0.7
+            linewidth=1,
+            alpha=0.5
         )
 
         self.current_roi = PolygonSelector(ax, self.on_polygon_select,
