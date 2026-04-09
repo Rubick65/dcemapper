@@ -1,10 +1,8 @@
-import sys
 from pathlib import Path
 
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QAction, QActionGroup
-from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QListWidget, QGridLayout, QWidget, \
-    QVBoxLayout, QMenuBar, QMenu
+from PyQt6.QtWidgets import QFileDialog, QMenuBar, QMenu
 
 from src.io.bruker_conversion import convert_studies_from_bruker
 from src.ui.file_explorer.shortcuts_menu import ShortcutsMenu
@@ -372,62 +370,3 @@ class TopMenu(QMenuBar):
 
         self.shortcuts.show()
         self.shortcuts.raise_()
-
-
-class FileListWidget(QListWidget):
-
-    def __init__(self):
-        super().__init__()
-        self.setFixedSize(400, 300)
-
-
-class MainWindow(QMainWindow):
-
-    def __init__(self):
-        super().__init__()
-
-        self.initUI()
-
-        # Create the central widget for the file list
-        self.centralWidget = QWidget(self)
-        self.setCentralWidget(self.centralWidget)
-
-        self.top_menu = TopMenu()
-
-        self.main_layout = QVBoxLayout(self.centralWidget)
-
-        self.file_list = FileListWidget()
-        self.main_layout.addWidget(self.file_list)
-
-        self.setMenuBar(self.top_menu)
-        self.top_menu.file_menu.files_signal.connect(self.receive_file_list)
-
-    def initUI(self):
-        # Main window configuration
-        self.main_window_configurations()
-
-        layout = QGridLayout(self)
-        self.setLayout(layout)
-
-    def receive_file_list(self, files):
-        if files:
-            file_path = [str(Path(files)) for files in files]
-            self.file_list.addItems(file_path)
-
-    def main_window_configurations(self):
-        main_window_width = 1200
-        main_window_height = 600
-
-        self.setWindowTitle("File explorer test")
-        self.resize(main_window_width, main_window_height)
-
-
-def main():
-    app = QApplication(sys.argv)
-    window = MainWindow()
-    window.show()
-    sys.exit(app.exec())
-
-
-if __name__ == '__main__':
-    main()

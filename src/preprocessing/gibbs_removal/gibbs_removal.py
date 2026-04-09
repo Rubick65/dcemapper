@@ -53,11 +53,3 @@ def gibbs_suppress(nifti_file_path, unringed_nii_output_path=None, check_params=
 
     return keep_unringed, unringed_nii_output_path
 
-
-def main():
-    example_file = [r"C:\Users\laboratorio\PycharmProjects\dcemapper\src\test_nifti.nii.gz"]
-    gibbs_remove(example_file)
-
-
-if __name__ == "__main__":
-    main()
