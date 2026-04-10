@@ -10,7 +10,6 @@ import numpy as np
 import shutil as shutil
 from src.visualization.preprocessing_visualization import init_view
 
-
 def is_valid_nifti(path):
     if not path.endswith(('.nii.gz', '.nii')):
         raise ValueError('Not a valid nifti file')

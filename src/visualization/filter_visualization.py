@@ -68,7 +68,7 @@ class UserParameterDialog(QDialog):
         # Spacing between widgets
         vertical_layout.setSpacing(15)
 
-        # Ensure the layout's parent widget respects the minimum size of its content.
+        # Ensure the layout's parent widget respects the minimum size of its content
         vertical_layout.setSizeConstraint(QVBoxLayout.SizeConstraint.SetMinimumSize)
 
         # Label with filter name text
@@ -80,7 +80,7 @@ class UserParameterDialog(QDialog):
 
         # For every parameter in the dict
         for parameter, info in parameter_dict.items():
-            # Creat a label with the paramete and the info to show
+            # Create a label with the paramete and the info to show
             label_text = QLabel(f"[{parameter}]: {info[1]}")
 
             # Add info text to vertical layout
@@ -110,11 +110,12 @@ class UserParameterDialog(QDialog):
         Create the button box widget
         :return: Button box with the needed buttons
         """
-        QBtn = (
-            QDialogButtonBox.StandardButton.Save
-        )
-        button_box = QDialogButtonBox(QBtn)
+        buttons = QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel
+
+        button_box = QDialogButtonBox(buttons)
+
         button_box.accepted.connect(self.submit)
+        button_box.rejected.connect(self.reject)
 
         return button_box
 
@@ -190,12 +191,20 @@ class UserParameterDialog(QDialog):
             # Finally clicked event is disconnected
             input_text.clicked.disconnect()
 
+    def reject(self):
+        self.value_signal = None
+        super().reject()
 
 def ask_user_parameters(parameter_dict: dict, filter_name: str):
     app = QApplication.instance() or QApplication(sys.argv)
     window = UserParameterDialog(parameter_dict, filter_name)
+    app.setQuitOnLastWindowClosed(False)
 
     if window.exec() == QDialog.DialogCode.Accepted:
-        return window.value_signal
+        param = window.value_signal
+        window.deleteLater()
+        return param
+
     else:
-        return {key: val[0] for key, val in parameter_dict.items()}
+        window.deleteLater()
+        return None

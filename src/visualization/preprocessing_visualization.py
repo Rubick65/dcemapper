@@ -178,6 +178,6 @@ def init_view(figure, retry=True):
         restart = True
     else:
         # If the window is closed
-        restart = False
+        raise Exception("")
 
     return restart

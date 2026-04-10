@@ -154,9 +154,13 @@ class MainWindow(QMainWindow):
         output_folder = create_output_folder(self.current_subject if self.current_subject else "Unknown",
                                              self.derivative_folder)
         data = self.nifty_path
-
-        if denoise_filter:
-            data = denoise_init_one_file(self.nifty_path, output_folder, denoise_filter)
+        try:
+            if denoise_filter:
+                data = denoise_init_one_file(self.nifty_path, output_folder, denoise_filter)
+                if data is None:
+                    return
+        except Exception:
+            pass
 
         if gibbs:
             data = gibbs_remove([data])
@@ -993,6 +997,10 @@ class MainWindow(QMainWindow):
             self.amount_image_selector_in_row = new_amount
             roi_slices = get_nifti_slices(self.data)
             self.update_image_selector(roi_slices)
+
+    def closeEvent(self, event):
+        self.movie_timer.stop()
+        QApplication.quit()
 
 
 if __name__ == "__main__":

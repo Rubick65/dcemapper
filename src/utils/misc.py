@@ -8,6 +8,10 @@ denoise_filters_dict = {
     "&Adaptative Soft Coefficient Matching": "Adaptative Soft Coefficient Matching",
 }
 
+processing_types_dict = {
+    "&Semi-quantitative": "Semi-quantitative model creation",
+}
+
 file_options_dict = {
     "&Open BIDS": "Opens BIDS structure and search for correct file",
     "&Open NIfTI File": "Opens NIfTI files",
