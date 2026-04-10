@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import QFileDialog, QMenuBar, QMenu
 from src.io.bruker_conversion import convert_studies_from_bruker
 from src.ui.file_explorer.shortcuts_menu import ShortcutsMenu
 from src.utils.get_file_to_process import get_files_to_process
-from src.utils.misc import denoise_filters_dict, file_options_dict
+from src.utils.misc import denoise_filters_dict, file_options_dict, processing_types_dict
 from src.utils.utils import get_correct_subject
 
 
@@ -44,13 +44,74 @@ class PersistentMenu(NonePersistentMenu):
             # If the click is outside, the menu hides
             super().mouseReleaseEvent(event)
 
-class ProcessingMenu(PersistentMenu):
-    process_signal = pyqtSignal(tuple)
+class ProcessedMenu(PersistentMenu):
+    process_signal = pyqtSignal(str)
 
     def __init__(self, parent = None):
         super().__init__(parent)
         self.process_menu = None
         self.process_action = None
+        self.create_processed_types_menu()
+        self.triggered.connect(self.check_processing_condition)
+
+    def create_processed_types_menu(self):
+        self.setTitle("&Processed")
+        self.setMouseTracking(True)
+        self.create_processed_menus()
+
+    def create_processed_menus(self):
+        self.process_menu = ProcessSelectionMenu()
+        self.addMenu(self.process_menu)
+        self.process_menu.group.triggered.connect(self.check_processing_condition)
+        self.create_processed_action()
+
+    def create_processed_action(self):
+        self.process_action = QAction("&Process", self)
+        self.process_action.setStatusTip("Start processing")
+
+        self.process_action.setCheckable(False)
+        self.process_action.setEnabled(False)
+        self.process_action.triggered.connect(self.get_procesing_options)
+
+        self.addAction(self.process_action)
+
+    def get_procesing_options(self):
+        process_options = self.process_menu.group.actions()
+        process_selected_option = None
+        for option in process_options:
+
+            if option.isChecked():
+                process_selected_option = option.text()
+                break
+
+        if not process_options:
+            return
+
+        self.process_signal.emit(process_selected_option)
+
+    def check_processing_condition(self):
+        actions = self.actions()
+        activate_process = self.check_processing_actions(actions)
+
+        self.process_action.setEnabled(activate_process)
+
+    def check_processing_actions(self, actions):
+
+        process = False
+
+        for action in actions:
+            submenu = action.menu()
+
+            if submenu is not None and isinstance(submenu, QMenu):
+                sub_actions = submenu.actions()
+                process = self.check_processing_actions(sub_actions)
+
+            else:
+                if action.isChecked():
+                    process = True
+                    break
+        return process
+
 
 class PreprocessingMenu(PersistentMenu):
     preprocess_signal = pyqtSignal(tuple)
@@ -141,6 +202,37 @@ class PreprocessingMenu(PersistentMenu):
 
         return preprocess
 
+class ProcessSelectionMenu(PersistentMenu):
+    activate_process_signal = pyqtSignal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.process_options = []
+        self.group = QActionGroup(self)
+        self.group.setExclusive(False)
+        self.initMenu()
+
+    def initMenu(self):
+        self.setTitle("&Type")
+        self.processing_actions()
+        self.group.triggered.connect(self.handle_exclusivity)
+
+    def processing_actions(self):
+        for action, status_tip in processing_types_dict.items():
+            proc_option = QAction(action, self)
+            proc_option.setStatusTip(status_tip)
+            proc_option.setCheckable(True)
+
+            self.group.addAction(proc_option)
+            self.addAction(proc_option)
+
+            self.process_options.append(proc_option)
+
+    def handle_exclusivity(self, selected_action):
+        if selected_action.isChecked():
+            for action in self.group.actions():
+                if action is not selected_action:
+                    action.setChecked(False)
 
 class DenoiseMenu(PersistentMenu):
     activate_preprocess_signal = pyqtSignal()
@@ -349,14 +441,16 @@ class TopMenu(QMenuBar):
         self.shortcuts = None
         self.shortcuts_action = None
         self.preprocessing_menu = PreprocessingMenu(self)
+        self.process_menu = ProcessedMenu(self)
         self.create_top_menu()
 
     def create_top_menu(self):
         # File menu with all the options
         self.addMenu(self.file_menu)
 
-        # Preprocessing menu section
+        # menu section
         self.addMenu(self.preprocessing_menu)
+        self.addMenu(self.process_menu)
 
         self.create_shortcuts_action()
 
@@ -367,9 +461,11 @@ class TopMenu(QMenuBar):
 
     def deactivate(self):
         self.preprocessing_menu.setEnabled(False)
+        self.process_menu.setEnabled(False)
 
     def activate(self):
         self.preprocessing_menu.setEnabled(True)
+        self.process_menu.setEnabled(True)
 
     def open_shortcuts(self):
         if self.shortcuts is None:
