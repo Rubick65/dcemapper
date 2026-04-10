@@ -10,6 +10,8 @@ import numpy as np
 import shutil as shutil
 from src.visualization.preprocessing_visualization import init_view
 
+class UserCancelledError(Exception):
+    pass
 
 def is_valid_nifti(path):
     if not path.endswith(('.nii.gz', '.nii')):

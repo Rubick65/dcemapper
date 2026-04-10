@@ -44,6 +44,13 @@ class PersistentMenu(NonePersistentMenu):
             # If the click is outside, the menu hides
             super().mouseReleaseEvent(event)
 
+class ProcessingMenu(PersistentMenu):
+    process_signal = pyqtSignal(tuple)
+
+    def __init__(self, parent = None):
+        super().__init__(parent)
+        self.process_menu = None
+        self.process_action = None
 
 class PreprocessingMenu(PersistentMenu):
     preprocess_signal = pyqtSignal(tuple)
