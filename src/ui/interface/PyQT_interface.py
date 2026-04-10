@@ -19,7 +19,7 @@ from src.ui.Images_Class.IntensityGraph import IntensityGraph
 from src.ui.Images_Class.NiftiCanvas import NiftiCanvas
 from src.ui.file_explorer.file_explorer import TopMenu
 from src.ui.interface.NiftiToolbar import NiftiToolbar
-from src.utils.utils import create_output_folder, get_correct_subject, normalize_img, UserCancelledError
+from src.utils.utils import create_output_folder, get_correct_subject, normalize_img
 
 # -----------------CONSTANTS-----------------
 window_minSize = QSize(1125, 500)
@@ -157,7 +157,7 @@ class MainWindow(QMainWindow):
         try:
             if denoise_filter:
                 data = denoise_init_one_file(self.nifty_path, output_folder, denoise_filter)
-        except UserCancelledError:
+        except Exception:
             print()
 
         if gibbs:

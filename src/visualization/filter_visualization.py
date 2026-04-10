@@ -4,9 +4,6 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QDialog, QApplication, QDialogButtonBox, QVBoxLayout, QLabel, \
     QLineEdit, QHBoxLayout, QWidget
 
-from src.utils.utils import UserCancelledError
-
-
 class ClickLabel(QLineEdit):
     # Signal when click is pressed
     clicked = pyqtSignal()
@@ -201,4 +198,4 @@ def ask_user_parameters(parameter_dict: dict, filter_name: str):
     if window.exec() == QDialog.DialogCode.Accepted:
         return window.value_signal
     else:
-        raise UserCancelledError("")
+        raise Exception("")

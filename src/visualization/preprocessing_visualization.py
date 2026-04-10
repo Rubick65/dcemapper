@@ -6,8 +6,6 @@ from PyQt6.QtWidgets import QDialog, QApplication, QDialogButtonBox, QVBoxLayout
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
 
-from src.utils.utils import UserCancelledError
-
 RETRY_CODE = 2
 
 
@@ -180,6 +178,6 @@ def init_view(figure, retry=True):
         restart = True
     else:
         # If the window is closed
-        raise UserCancelledError("")
+        raise Exception("")
 
     return restart
