@@ -2,7 +2,8 @@ import sys
 
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QDialog, QApplication, QDialogButtonBox, QVBoxLayout, QLabel, \
-    QLineEdit, QHBoxLayout, QWidget
+    QLineEdit
+
 
 class ClickLabel(QLineEdit):
     # Signal when click is pressed
@@ -190,12 +191,20 @@ class UserParameterDialog(QDialog):
             # Finally clicked event is disconnected
             input_text.clicked.disconnect()
 
+    def reject(self):
+        self.value_signal = None
+        super().reject()
+
 def ask_user_parameters(parameter_dict: dict, filter_name: str):
     app = QApplication.instance() or QApplication(sys.argv)
     window = UserParameterDialog(parameter_dict, filter_name)
     app.setQuitOnLastWindowClosed(False)
 
     if window.exec() == QDialog.DialogCode.Accepted:
-        return window.value_signal
+        param = window.value_signal
+        window.deleteLater()
+        return param
+
     else:
-        raise Exception("")
+        window.deleteLater()
+        return None

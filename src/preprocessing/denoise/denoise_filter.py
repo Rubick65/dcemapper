@@ -75,6 +75,9 @@ def denoise(
 
         denoised_image, params = denoise_options(original_image, params, check_params, nifti_file_path, selected_filter)
 
+        if denoised_image is None or params is None:
+            return None, nifti_file_path, selected_filter
+
         if check_params:
             process_again = create_general_preprocess_output(original_image, denoised_image, "Denoised")
         else:
