@@ -612,8 +612,7 @@ class MainWindow(QMainWindow):
         :param z: current Slice (Z)
         :param intensitis_t: Intensities in all the times
         """
-        intensity_increase = ((intensitis_t[-1] - intensitis_t[0]) / intensitis_t[0] * 100) if intensitis_t[
-                                                                                                   0] != 0 else 0
+        intensity_increase = ((intensitis_t[-1] - intensitis_t[0]) / intensitis_t[0] * 100) if intensitis_t[0] != 0 else 0
         info = f"Click = {self.record_layout.count() + 1} | X = {x} | Y = {y} | Z = {z} | Intensity increase = {intensity_increase}"
         label = QLabel(info)
         # We add the info in the top of the layout
