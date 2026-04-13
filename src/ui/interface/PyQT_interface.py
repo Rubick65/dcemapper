@@ -13,6 +13,7 @@ from matplotlib.widgets import RectangleSelector, EllipseSelector, PolygonSelect
 from src.io.nifti_io import load_nifti, get_nifti_slices
 from src.preprocessing.denoise.denoise_filter import denoise_init_one_file
 from src.preprocessing.gibbs_removal.gibbs_removal import gibbs_remove
+from src.processing.Semi_Quantitative import semi_quantitative
 from src.roi.roi_creation import update_rectangular_mask, update_elliptical_mask, update_polygon_mask, restar_mask
 from src.ui.Images_Class.ClickImage import ClickImage
 from src.ui.Images_Class.IntensityGraph import IntensityGraph
@@ -92,6 +93,7 @@ class MainWindow(QMainWindow):
         self.top_bar.file_menu.files_signal.connect(self.set_various_files)
         self.top_bar.file_menu.one_file_signal.connect(self.set_various_files)
         self.top_bar.preprocessing_menu.preprocess_signal.connect(self.preprocessing)
+        self.top_bar.process_menu.process_signal.connect()
 
         # Main container
         main_widget = QWidget()
@@ -175,6 +177,19 @@ class MainWindow(QMainWindow):
         self.update_widgets(roi_slices)
 
         self.top_bar.file_menu.change_current_file(data)
+
+    def proccesing(self, selected_process_option):
+        selected_option = selected_process_option[1:2].lower()
+        match selected_process_option:
+            case "s":
+                semi_quantitative(self.data, )
+
+
+
+
+
+
+
 
     def update_widgets(self, roi_slices_t0):
 
