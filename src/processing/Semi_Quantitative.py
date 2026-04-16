@@ -9,8 +9,12 @@ from src.visualization.filter_visualization import ask_user_parameters
 
 
 def semi_quantitative(data, img, folders: tuple, semi_quantitative_data: tuple = None):
+    # Indicates if the user wants to retry for parameter selection
     retry = True
-    while (retry):
+
+    # While retry is true
+    while retry:
+        # Get´s the data needed for semi quantitative processing
         frame_ini_contrast, frame_period = get_semi_quantitative_data(semi_quantitative_data)
 
         output_folder = folders[0]
@@ -22,7 +26,7 @@ def semi_quantitative(data, img, folders: tuple, semi_quantitative_data: tuple =
 
         retry = create_general_preprocess_output(data, rce, "Processed")
 
-    save_nifit(rce, img.affine, output_folder, nifti_file_path)
+    return save_nifit(rce, img.affine, output_folder, nifti_file_path)
 
 
 def get_semi_quantitative_data(semi_quantitative_data: tuple):
@@ -40,12 +44,9 @@ def get_semi_quantitative_data(semi_quantitative_data: tuple):
 
 
 def calculate_reference_value(data, n_pixeles):
-    first_frame = data[:, :, :, 0]
-    important_pixels = first_frame[first_frame > 10]
+    S0 = np.mean(data[:, :, :, :n_pixeles,], axis=3)
 
-    selection_pixel = important_pixels[:n_pixeles]
-
-    return np.mean(selection_pixel)
+    return S0
 
 
 def save_nifit(data, affine, output_folder, nifti_file_path):
@@ -60,17 +61,28 @@ def save_nifit(data, affine, output_folder, nifti_file_path):
 
     nib.save(img, denoised_nii_output_path)
 
+    return denoised_nii_output_path
+
 
 def calculate_rce(data, reference_value):
-    rce = np.zeros_like(data)
-    mask = data > 0
+    data = data.astype(np.float32)
+    s0 = reference_value.astype(np.float32)
 
-    rce[mask] = ((data[mask] - reference_value) / reference_value) * 100
+    mask = s0 > (np.mean(s0) * 0.3)
+
+    s0_expanded = s0[:, :, :, np.newaxis]
+    mask_expanded = mask[:, :, :, np.newaxis]
+
+    rce = np.where(mask_expanded,
+                   ((data - s0_expanded) / s0_expanded) * 100,
+                   0)
+
+    rce = np.clip(rce, 0, 500)
 
     return rce
 
 
-def calculate_rce_max():
+def calculate_rce_max(frame_period):
     pass
 
 
@@ -80,7 +92,7 @@ def main():
 
     semi_quantitative(data, img,
                       (r"C:\Users\laboratorio\PycharmProjects\dcemapper\src",
-                       r"C:\Users\laboratorio\PycharmProjects\dcemapper\src\sub-B060326_WTF1_d10_DCE_acq-10_run-1_dce.nii.gz"))
+                       r"C:\Users\laboratorio\PycharmProjects\dcemapper\src\sub-B060326_WTF1_d10_DCE_acq-10_run-1_dce_preproc.nii.gz"))
 
 
 if __name__ == "__main__":

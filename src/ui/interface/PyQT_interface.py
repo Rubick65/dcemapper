@@ -94,7 +94,7 @@ class MainWindow(QMainWindow):
         self.top_bar.file_menu.files_signal.connect(self.set_various_files)
         self.top_bar.file_menu.one_file_signal.connect(self.set_various_files)
         self.top_bar.preprocessing_menu.preprocess_signal.connect(self.preprocessing)
-        # self.top_bar.process_menu.process_signal.connect()
+        self.top_bar.process_menu.process_signal.connect(self.processing)
 
         # Main container
         main_widget = QWidget()
@@ -168,9 +168,25 @@ class MainWindow(QMainWindow):
         if gibbs:
             data = gibbs_remove([data])
 
+        self.set_new_data(data)
+
+    def processing(self, selected_process_option):
+        selected_option = selected_process_option[1:2].lower()
+        output_folder = create_output_folder(self.current_subject if self.current_subject else "Unknown",
+                                             self.derivative_folder)
+        data = ""
+
+        match selected_option:
+            case "s":
+                data = semi_quantitative(self.data, self.img, (output_folder, self.nifty_path))
+
+        self.set_new_data(data)
+
+    def set_new_data(self, data):
+
         self.nifty_path = data
 
-        self.data, _ = load_nifti(data)
+        self.data, self.img = load_nifti(data)
         self.original_data = self.data
         self.toolbar.roi_menu.activate_roi_selection()
 
@@ -178,13 +194,6 @@ class MainWindow(QMainWindow):
         self.update_widgets(roi_slices)
 
         self.top_bar.file_menu.change_current_file(data)
-
-    def proccesing(self, selected_process_option):
-        selected_option = selected_process_option[1:2].lower()
-
-        match selected_option:
-            case "s":
-                semi_quantitative(self.data, self.img, (self.derivative_folder, ""))
 
     def update_widgets(self, roi_slices_t0):
 
@@ -323,9 +332,8 @@ class MainWindow(QMainWindow):
             self.x.setText("0")
             self.y.setText("0")
 
-        self.mask_history = []
-        self.current_mask_counter = -1
         self.current_roi = None
+        self.current_file = nifty_path
 
         self.image_widgets = []
 
