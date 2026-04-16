@@ -280,7 +280,6 @@ class SaveMenu(PersistentMenu):
     def save_roi_action(self):
         self.save_action.setStatusTip("Save ROI")
         self.save_action.setEnabled(False)
-        # self.save_action.triggered.connect()
         self.group.addAction(self.save_action)
         self.addAction(self.save_action)
 
