@@ -68,6 +68,7 @@ class MainWindow(QMainWindow):
         self.original_data = None
         self.current_subject = None
         self.derivative_folder = None
+        self.img = None
         self.movie_timer = QTimer()
         self.movie_timer.timeout.connect(self.next_movie_frame)
 
@@ -93,7 +94,7 @@ class MainWindow(QMainWindow):
         self.top_bar.file_menu.files_signal.connect(self.set_various_files)
         self.top_bar.file_menu.one_file_signal.connect(self.set_various_files)
         self.top_bar.preprocessing_menu.preprocess_signal.connect(self.preprocessing)
-        self.top_bar.process_menu.process_signal.connect()
+        # self.top_bar.process_menu.process_signal.connect()
 
         # Main container
         main_widget = QWidget()
@@ -180,16 +181,10 @@ class MainWindow(QMainWindow):
 
     def proccesing(self, selected_process_option):
         selected_option = selected_process_option[1:2].lower()
-        match selected_process_option:
+
+        match selected_option:
             case "s":
-                semi_quantitative(self.data, )
-
-
-
-
-
-
-
+                semi_quantitative(self.data, self.img, (self.derivative_folder, ""))
 
     def update_widgets(self, roi_slices_t0):
 
@@ -335,7 +330,8 @@ class MainWindow(QMainWindow):
         self.image_widgets = []
 
         self.nifty_path = nifty_path
-        self.data, _ = load_nifti(self.nifty_path)
+        self.data, img = load_nifti(self.nifty_path)
+        self.img = img
         self.original_data = self.data.copy()
         self.full_mask = np.ones(self.data.shape[:3], dtype=float)
 
@@ -521,7 +517,6 @@ class MainWindow(QMainWindow):
         if self.canvas:
             self.canvas.set_t(t_value)
 
-
     def update_time_from_text(self):
         """
         Updates the slider based on manual text input
@@ -627,7 +622,8 @@ class MainWindow(QMainWindow):
         :param z: current Slice (Z)
         :param intensitis_t: Intensities in all the times
         """
-        intensity_increase = ((intensitis_t[-1] - intensitis_t[0]) / intensitis_t[0] * 100) if intensitis_t[0] != 0 else 0
+        intensity_increase = ((intensitis_t[-1] - intensitis_t[0]) / intensitis_t[0] * 100) if intensitis_t[
+                                                                                                   0] != 0 else 0
         info = f"Click = {self.record_layout.count() + 1} | X = {x} | Y = {y} | Z = {z} | Intensity increase = {intensity_increase}"
         label = QLabel(info)
         # We add the info in the top of the layout
