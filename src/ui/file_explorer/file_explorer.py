@@ -10,8 +10,8 @@ from src.utils.get_file_to_process import get_files_to_process
 from src.utils.misc import denoise_filters_dict, file_options_dict
 from src.utils.utils import get_correct_subject
 
-class NonePersistentMenu(QMenu):
 
+class NonePersistentMenu(QMenu):
     def leaveEvent(self, a0):
         if self.underMouse():
             return
@@ -28,9 +28,9 @@ class PersistentMenu(NonePersistentMenu):
     def mouseReleaseEvent(self, event):
         """
         Overrides default mouse release action, new action
-        only hides the menu when
+        only hides the menu when clicked outside the menu
         :param event:
-        :return:
+        :return: None
         """
         # Gets the action at its position
         action = self.actionAt(event.pos())
@@ -168,14 +168,41 @@ class DenoiseMenu(PersistentMenu):
                     action.setChecked(False)
 
 
+class SaveMenu(PersistentMenu):
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.save_action = QAction("&Save current ROI", self)
+        self.group = QActionGroup(self)
+        self.initUi()
+
+    def initUi(self):
+        self.save_roi_action()
+
+    def save_roi_action(self):
+        self.save_action.setStatusTip("Save ROI")
+        self.save_action.setEnabled(False)
+        # self.save_action.triggered.connect()
+        self.group.addAction(self.save_action)
+        self.addAction(self.save_action)
+
+
 class FileMenu(PersistentMenu):
     # Signal for the selected files
     files_signal = pyqtSignal(tuple)
 
     one_file_signal = pyqtSignal(tuple)
+    check_for_roi_changes_signal = pyqtSignal()
+
+    def enterEvent(self, a0):
+        print(self.save_menu.underMouse())
+        if self.save_menu:
+            print("Entró")
+            self.check_for_roi_changes_signal.emit()
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.save_menu = None
         self.denoising_filters = []
         self.group = QActionGroup(self)
         self.group.setExclusive(False)
@@ -192,14 +219,11 @@ class FileMenu(PersistentMenu):
         self.group.triggered.connect(self.open_file_action)
 
     def file_actions(self):
+        self.open_file_actions()
 
         self.displacer_action()
-        for action, status_tip in file_options_dict.items():
-            file_options = QAction(action, self)
-            file_options.setStatusTip(status_tip)
 
-            self.group.addAction(file_options)
-            self.addAction(file_options)
+        self.create_save_menu()
 
     def displacer_action(self):
         self.next_action = QAction("&Next", self)
@@ -214,6 +238,19 @@ class FileMenu(PersistentMenu):
 
         self.addAction(self.previous_action)
         self.addAction(self.next_action)
+
+    def open_file_actions(self):
+        open_file_menu = PersistentMenu(self)
+        open_file_menu.setTitle("&Open")
+
+        for action, status_tip in file_options_dict.items():
+            file_option = QAction(action, self)
+            file_option.setStatusTip(status_tip)
+
+            self.group.addAction(file_option)
+            open_file_menu.addAction(file_option)
+
+        self.addMenu(open_file_menu)
 
     def open_file_action(self, selected_action):
         selected_action_text = selected_action.text().split(" ")[1][0:2].lower()
@@ -330,6 +367,11 @@ class FileMenu(PersistentMenu):
     def change_current_file(self, new_file):
         if self.file_list:
             self.file_list[self.current_file_counter] = new_file
+
+    def create_save_menu(self):
+        self.save_menu = SaveMenu(self)
+        self.save_menu.setTitle("&Save")
+        self.addMenu(self.save_menu)
 
 
 class TopMenu(QMenuBar):

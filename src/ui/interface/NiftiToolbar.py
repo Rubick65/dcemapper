@@ -22,7 +22,6 @@ class RoiMenu(QMenu):
 
     def initUI(self):
         self.roi_selection_actions()
-        self.save_roi_action()
 
     def roi_selection_actions(self):
         # Different roi selection options
@@ -35,12 +34,6 @@ class RoiMenu(QMenu):
             self.group.addAction(roi_option)
             self.addAction(roi_option)
 
-    def save_roi_action(self):
-        # Save current created roi option
-        self.save_action.setStatusTip("Save ROI")
-        self.save_action.setCheckable(True)
-        self.save_action.setEnabled(False)
-        self.addAction(self.save_action)
 
     def handle_exclusivity(self, selected_action: QAction):
         if not selected_action.isChecked():
@@ -59,8 +52,6 @@ class RoiMenu(QMenu):
                 action.trigger()
                 break
 
-    def activate_save_roi_action(self):
-        self.save_action.setEnabled(True)
 
     def activate_roi_selection(self):
         actions = self.group.actions()
@@ -76,7 +67,6 @@ class RoiMenu(QMenu):
 
 class NiftiToolbar(NavigationToolbar):
     previous_roi_signal = pyqtSignal()
-    check_for_roi_changes_signal = pyqtSignal()
 
     def __init__(self, canvas: NiftiCanvas, parent):
         super().__init__(canvas, parent)
@@ -98,7 +88,6 @@ class NiftiToolbar(NavigationToolbar):
 
         self.roi_menu = RoiMenu()
         self.roi_button = QToolButton(self)
-        self.roi_button.triggered.connect(self.check_for_roi_changes_signal.emit)
         self.add_roi_menu()
 
         self.set_history_buttons()

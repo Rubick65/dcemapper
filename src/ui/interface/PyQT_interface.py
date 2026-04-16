@@ -92,6 +92,7 @@ class MainWindow(QMainWindow):
         self.top_bar.file_menu.files_signal.connect(self.set_various_files)
         self.top_bar.file_menu.one_file_signal.connect(self.set_various_files)
         self.top_bar.preprocessing_menu.preprocess_signal.connect(self.preprocessing)
+        self.top_bar.file_menu.check_for_roi_changes_signal.connect(self.check_changes_in_mask)
 
         # Main container
         main_widget = QWidget()
@@ -556,7 +557,6 @@ class MainWindow(QMainWindow):
 
         # Toolbar with custom options
         self.toolbar = NiftiToolbar(self.canvas, self)
-        self.toolbar.check_for_roi_changes_signal.connect(self.check_changes_in_mask)
 
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 20, 0, 0)
@@ -581,7 +581,8 @@ class MainWindow(QMainWindow):
 
     def check_changes_in_mask(self):
         if self.original_data == self.data:
-            self.toolbar.activate_save_roi_action()
+            print("Entró")
+
 
     def create_graphic(self, x, y, value):
         """
