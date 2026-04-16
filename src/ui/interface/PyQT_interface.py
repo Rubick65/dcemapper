@@ -601,6 +601,11 @@ class MainWindow(QMainWindow):
 
         return container
 
+    def check_changes_in_mask(self):
+        if self.original_data == self.data:
+            print("Entró")
+
+
     def create_graphic(self, x, y, value):
         """
         Upload of the graphic with the pixel data

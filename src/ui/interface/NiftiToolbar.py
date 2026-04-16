@@ -6,6 +6,7 @@ from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as Navigation
 from src.ui.Images_Class.NiftiCanvas import NiftiCanvas
 from src.utils.misc import roi_actions_dict
 
+
 class RoiMenu(QMenu):
     selected_text_signal = pyqtSignal(str)
     deactivate_roi_selection_signal = pyqtSignal()
@@ -15,6 +16,7 @@ class RoiMenu(QMenu):
         self.group = QActionGroup(self)
         self.group.setExclusive(False)
         self.group.triggered.connect(self.handle_exclusivity)
+        self.save_action = QAction("&Save ROI", self)
         self.already_processed = False
         self.initUI()
 
@@ -22,14 +24,16 @@ class RoiMenu(QMenu):
         self.roi_selection_actions()
 
     def roi_selection_actions(self):
+        # Different roi selection options
         for roi, tip in roi_actions_dict.items():
-            denoising_filter = QAction(roi, self)
-            denoising_filter.setStatusTip(tip)
-            denoising_filter.setCheckable(True)
-            denoising_filter.setEnabled(False)
+            roi_option = QAction(roi, self)
+            roi_option.setStatusTip(tip)
+            roi_option.setCheckable(True)
+            roi_option.setEnabled(False)
 
-            self.group.addAction(denoising_filter)
-            self.addAction(denoising_filter)
+            self.group.addAction(roi_option)
+            self.addAction(roi_option)
+
 
     def handle_exclusivity(self, selected_action: QAction):
         if not selected_action.isChecked():
@@ -48,6 +52,7 @@ class RoiMenu(QMenu):
                 action.trigger()
                 break
 
+
     def activate_roi_selection(self):
         actions = self.group.actions()
         if not actions:
@@ -58,8 +63,6 @@ class RoiMenu(QMenu):
 
         self.already_processed = True
         self.update()
-
-
 
 
 class NiftiToolbar(NavigationToolbar):
@@ -135,5 +138,3 @@ class NiftiToolbar(NavigationToolbar):
         previous_roi_action.triggered.connect(self.previous_roi_signal.emit)
 
         self.addAction(previous_roi_action)
-
-
