@@ -23,7 +23,6 @@ class NonePersistentMenu(QMenu):
 
         super().hide()
 
-
 class PersistentMenu(NonePersistentMenu):
 
     def mouseReleaseEvent(self, event):
@@ -71,11 +70,11 @@ class ProcessedMenu(PersistentMenu):
 
         self.process_action.setCheckable(False)
         self.process_action.setEnabled(False)
-        self.process_action.triggered.connect(self.get_procesing_options)
+        self.process_action.triggered.connect(self.get_processing_options)
 
         self.addAction(self.process_action)
 
-    def get_procesing_options(self):
+    def get_processing_options(self):
         process_options = self.process_menu.group.actions()
         process_selected_option = None
         for option in process_options:

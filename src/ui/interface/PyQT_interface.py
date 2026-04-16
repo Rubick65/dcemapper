@@ -13,6 +13,7 @@ from matplotlib.widgets import RectangleSelector, EllipseSelector, PolygonSelect
 from src.io.nifti_io import load_nifti, get_nifti_slices
 from src.preprocessing.denoise.denoise_filter import denoise_init_one_file
 from src.preprocessing.gibbs_removal.gibbs_removal import gibbs_remove
+from src.processing.Semi_Quantitative import semi_quantitative
 from src.roi.roi_creation import update_rectangular_mask, update_elliptical_mask, update_polygon_mask, restar_mask
 from src.ui.Images_Class.ClickImage import ClickImage
 from src.ui.Images_Class.IntensityGraph import IntensityGraph
@@ -67,6 +68,7 @@ class MainWindow(QMainWindow):
         self.original_data = None
         self.current_subject = None
         self.derivative_folder = None
+        self.img = None
         self.movie_timer = QTimer()
         self.movie_timer.timeout.connect(self.next_movie_frame)
 
@@ -92,6 +94,7 @@ class MainWindow(QMainWindow):
         self.top_bar.file_menu.files_signal.connect(self.set_various_files)
         self.top_bar.file_menu.one_file_signal.connect(self.set_various_files)
         self.top_bar.preprocessing_menu.preprocess_signal.connect(self.preprocessing)
+        self.top_bar.process_menu.process_signal.connect(self.processing)
 
         # Main container
         main_widget = QWidget()
@@ -165,9 +168,25 @@ class MainWindow(QMainWindow):
         if gibbs:
             data = gibbs_remove([data])
 
+        self.set_new_data(data)
+
+    def processing(self, selected_process_option):
+        selected_option = selected_process_option[1:2].lower()
+        output_folder = create_output_folder(self.current_subject if self.current_subject else "Unknown",
+                                             self.derivative_folder)
+        data = ""
+
+        match selected_option:
+            case "s":
+                data = semi_quantitative(self.data, self.img, (output_folder, self.nifty_path))
+
+        self.set_new_data(data)
+
+    def set_new_data(self, data):
+
         self.nifty_path = data
 
-        self.data, _ = load_nifti(data)
+        self.data, self.img = load_nifti(data)
         self.original_data = self.data
         self.toolbar.roi_menu.activate_roi_selection()
 
@@ -313,14 +332,14 @@ class MainWindow(QMainWindow):
             self.x.setText("0")
             self.y.setText("0")
 
-        self.mask_history = []
-        self.current_mask_counter = -1
         self.current_roi = None
+        self.current_file = nifty_path
 
         self.image_widgets = []
 
         self.nifty_path = nifty_path
-        self.data, _ = load_nifti(self.nifty_path)
+        self.data, img = load_nifti(self.nifty_path)
+        self.img = img
         self.original_data = self.data.copy()
         self.full_mask = np.ones(self.data.shape[:3], dtype=float)
 
@@ -505,7 +524,6 @@ class MainWindow(QMainWindow):
 
         if self.canvas:
             self.canvas.set_t(t_value)
-
 
     def update_time_from_text(self):
         """
