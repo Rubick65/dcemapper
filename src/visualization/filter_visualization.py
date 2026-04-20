@@ -204,7 +204,6 @@ def ask_user_parameters(parameter_dict: dict, filter_name: str):
         param = window.value_signal
         window.deleteLater()
         return param
-
     else:
         window.deleteLater()
         return None

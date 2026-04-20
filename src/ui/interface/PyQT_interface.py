@@ -182,10 +182,13 @@ class MainWindow(QMainWindow):
         output_folder = create_output_folder(self.current_subject if self.current_subject else "Unknown",
                                              self.derivative_folder)
         data = self.nifty_path
-        if denoise_filter:
-            data = denoise_init_one_file(self.nifty_path, output_folder, denoise_filter)
-            if data is None:
-                return
+        try:
+            if denoise_filter:
+                data = denoise_init_one_file(self.nifty_path, output_folder, denoise_filter)
+                if data is None:
+                    return
+        except Exception:
+            pass
 
         if gibbs:
             data = gibbs_remove([data])
