@@ -159,8 +159,9 @@ class MainWindow(QMainWindow):
                 data = denoise_init_one_file(self.nifty_path, output_folder, denoise_filter)
                 if data is None:
                     return
+
         except Exception:
-            pass
+            return
 
         if gibbs:
             data = gibbs_remove([data])
@@ -999,7 +1000,7 @@ class MainWindow(QMainWindow):
             self.update_image_selector(roi_slices)
 
     def closeEvent(self, event):
-        self.movie_timer.stop()
+        self.stop_movie_mode()
         QApplication.quit()
 
 
