@@ -95,6 +95,7 @@ class MainWindow(QMainWindow):
         self.top_bar.file_menu.one_file_signal.connect(self.set_various_files)
         self.top_bar.preprocessing_menu.preprocess_signal.connect(self.preprocessing)
         self.top_bar.process_menu.process_signal.connect(self.processing)
+        self.top_bar.file_menu.save_menu.check_for_roi_changes_signal.connect(self.check_for_creating_roi)
 
         # Main container
         main_widget = QWidget()
@@ -130,6 +131,13 @@ class MainWindow(QMainWindow):
         else:
             self.movie_timer.stop()
             self.slider_t.setValue(0)
+
+    def check_for_creating_roi(self):
+        if self.data != self.original_data:
+            self.top_bar.file_menu.save_menu.activate_save_roi_action()
+        else:
+
+            self.top_bar.file_menu.save_menu.deactivate_save_roi_action()
 
     def set_various_files(self, nifty_data):
         nifty_path, derivative_folder = nifty_data
@@ -600,11 +608,6 @@ class MainWindow(QMainWindow):
         container.installEventFilter(self)
 
         return container
-
-    def check_changes_in_mask(self):
-        if self.original_data == self.data:
-            print("Entró")
-
 
     def create_graphic(self, x, y, value):
         """
