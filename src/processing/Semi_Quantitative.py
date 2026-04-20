@@ -4,7 +4,7 @@ import nibabel as nib
 import numpy as np
 
 from src.io.nifti_io import load_nifti
-from src.utils.utils import create_general_preprocess_output
+from src.utils.utils import create_general_preprocess_output, save_output_nifti
 from src.visualization.filter_visualization import ask_user_parameters
 
 
@@ -26,7 +26,7 @@ def semi_quantitative(data, img, folders: tuple, semi_quantitative_data: tuple =
 
         retry = create_general_preprocess_output(data, rce, "Processed")
 
-    return save_nifit(rce, img.affine, output_folder, nifti_file_path)
+    return save_output_nifti(rce, img.affine, output_folder, nifti_file_path, "proc_rce")
 
 
 def get_semi_quantitative_data(semi_quantitative_data: tuple):
@@ -47,21 +47,6 @@ def calculate_reference_value(data, n_pixeles):
     S0 = np.mean(data[:, :, :, :n_pixeles,], axis=3)
 
     return S0
-
-
-def save_nifit(data, affine, output_folder, nifti_file_path):
-    img = nib.Nifti1Image(data, affine)
-
-    denoised_nii_name = os.path.basename(nifti_file_path).replace(
-        ".nii.gz", "_proc.nii.gz"
-    )
-    denoised_nii_output_path = os.path.join(
-        output_folder, denoised_nii_name
-    )
-
-    nib.save(img, denoised_nii_output_path)
-
-    return denoised_nii_output_path
 
 
 def calculate_rce(data, reference_value):

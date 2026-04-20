@@ -271,7 +271,6 @@ class DenoiseMenu(PersistentMenu):
 
 
 class SaveMenu(PersistentMenu):
-    save_roi_signal = pyqtSignal()
     check_for_roi_changes_signal = pyqtSignal()
 
     def __init__(self, parent=None):
@@ -286,12 +285,9 @@ class SaveMenu(PersistentMenu):
     def save_roi_action(self):
         self.save_action.setStatusTip("Save Mask")
         self.save_action.setEnabled(True)
+        self.triggered.connect(self.check_for_roi_changes_signal.emit)
         self.group.addAction(self.save_action)
         self.addAction(self.save_action)
-
-    def save_roi(self):
-        self.check_for_roi_changes_signal.emit()
-        pass
 
     def activate_save_roi_action(self):
         self.save_action.setEnabled(True)

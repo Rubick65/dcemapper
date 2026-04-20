@@ -20,7 +20,8 @@ from src.ui.Images_Class.IntensityGraph import IntensityGraph
 from src.ui.Images_Class.NiftiCanvas import NiftiCanvas
 from src.ui.file_explorer.file_explorer import TopMenu
 from src.ui.interface.NiftiToolbar import NiftiToolbar
-from src.utils.utils import create_output_folder, get_correct_subject, normalize_img
+from src.utils.utils import create_output_folder, get_correct_subject, normalize_img, save_output_nifti
+from src.visualization.Alert_Message_Visualization import AlertDialog
 
 # -----------------CONSTANTS-----------------
 window_minSize = QSize(1125, 500)
@@ -97,6 +98,8 @@ class MainWindow(QMainWindow):
         self.top_bar.process_menu.process_signal.connect(self.processing)
         self.top_bar.file_menu.save_menu.check_for_roi_changes_signal.connect(self.check_for_creating_roi)
 
+        self.alert_dialog = None
+
         # Main container
         main_widget = QWidget()
 
@@ -133,11 +136,18 @@ class MainWindow(QMainWindow):
             self.slider_t.setValue(0)
 
     def check_for_creating_roi(self):
-        if self.data != self.original_data:
-            self.top_bar.file_menu.save_menu.activate_save_roi_action()
-        else:
 
-            self.top_bar.file_menu.save_menu.deactivate_save_roi_action()
+        if self.full_mask is None or np.all(self.full_mask == 1.0):
+            self.create_alert_dialog("Mask not found", "Mask was not found, please create one.")
+        else:
+            output_folder = self.top_bar.file_menu.file_selector(True)
+            save_output_nifti(self.full_mask, self.img.affine, str(output_folder[0]), self.nifty_path, "mask")
+
+    def create_alert_dialog(self, title, message):
+        self.alert_dialog = AlertDialog(title, message)
+
+        self.alert_dialog.show()
+        self.alert_dialog.raise_()
 
     def set_various_files(self, nifty_data):
         nifty_path, derivative_folder = nifty_data
