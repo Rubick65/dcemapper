@@ -152,6 +152,13 @@ def is_nii(filename):
     return filename.endswith(".nii") or filename.endswith(".nii.gz")
 
 
+def is_valid_mask(filename):
+    if not isinstance(filename, str):
+        filename = str(filename)
+
+    return filename.endswith("_mask.nii") or filename.endswith("_mask.nii.gz")
+
+
 def create_output_folder(subject, derivatives_folder):
     """
     Creat derivatives folder

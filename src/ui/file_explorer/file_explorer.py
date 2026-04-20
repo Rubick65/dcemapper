@@ -270,24 +270,34 @@ class DenoiseMenu(PersistentMenu):
                     action.setChecked(False)
 
 
-class SaveMenu(PersistentMenu):
+class MaskMenu(PersistentMenu):
     check_for_roi_changes_signal = pyqtSignal()
+    open_selected_mask_signal = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.save_action = QAction("&Save current Mask", self)
+        self.open_mask_action = QAction("&Open mask", self)
         self.group = QActionGroup(self)
         self.initUi()
 
     def initUi(self):
         self.save_roi_action()
+        self.open_mask_action_create()
 
     def save_roi_action(self):
         self.save_action.setStatusTip("Save Mask")
         self.save_action.setEnabled(True)
-        self.triggered.connect(self.check_for_roi_changes_signal.emit)
+        self.save_action.triggered.connect(self.check_for_roi_changes_signal.emit)
         self.group.addAction(self.save_action)
         self.addAction(self.save_action)
+
+    def open_mask_action_create(self):
+        self.open_mask_action.setStatusTip("Open Mask")
+        self.open_mask_action.setEnabled(True)
+        self.open_mask_action.triggered.connect(self.open_selected_mask_signal.emit)
+        self.group.addAction(self.open_mask_action)
+        self.addAction(self.open_mask_action)
 
     def activate_save_roi_action(self):
         self.save_action.setEnabled(True)
@@ -471,8 +481,8 @@ class FileMenu(PersistentMenu):
             self.file_list[self.current_file_counter] = new_file
 
     def create_save_menu(self):
-        self.save_menu = SaveMenu(self)
-        self.save_menu.setTitle("&Save")
+        self.save_menu = MaskMenu(self)
+        self.save_menu.setTitle("&Mask")
         self.addMenu(self.save_menu)
 
 
