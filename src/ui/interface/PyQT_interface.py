@@ -182,14 +182,10 @@ class MainWindow(QMainWindow):
         output_folder = create_output_folder(self.current_subject if self.current_subject else "Unknown",
                                              self.derivative_folder)
         data = self.nifty_path
-        try:
-            if denoise_filter:
-                data = denoise_init_one_file(self.nifty_path, output_folder, denoise_filter)
-                if data is None:
-                    return
-
-        except Exception:
-            return
+        if denoise_filter:
+            data = denoise_init_one_file(self.nifty_path, output_folder, denoise_filter)
+            if data is None:
+                return
 
         if gibbs:
             data = gibbs_remove([data])
@@ -280,7 +276,7 @@ class MainWindow(QMainWindow):
             mask_file = mask_file_list[0]
             mask_filename = Path(mask_file).name
 
-            if is_valid_mask(mask_filename):
+            if is_valid_mask(mask_filename) and self.original_data is not None:
                 self.full_mask, _ = load_nifti(str(mask_file))
                 self.update_canvas_with_roi()
         except ValueError:

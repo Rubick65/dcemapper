@@ -299,11 +299,6 @@ class MaskMenu(PersistentMenu):
         self.group.addAction(self.open_mask_action)
         self.addAction(self.open_mask_action)
 
-    def activate_save_roi_action(self):
-        self.save_action.setEnabled(True)
-
-    def deactivate_save_roi_action(self):
-        self.save_action.setEnabled(False)
 
 
 class FileMenu(PersistentMenu):
