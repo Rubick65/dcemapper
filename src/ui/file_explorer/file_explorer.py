@@ -22,6 +22,7 @@ class NonePersistentMenu(QMenu):
 
         super().hide()
 
+
 class PersistentMenu(NonePersistentMenu):
 
     def mouseReleaseEvent(self, event):
@@ -42,10 +43,11 @@ class PersistentMenu(NonePersistentMenu):
             # If the click is outside, the menu hides
             super().mouseReleaseEvent(event)
 
+
 class ProcessedMenu(PersistentMenu):
     process_signal = pyqtSignal(str)
 
-    def __init__(self, parent = None):
+    def __init__(self, parent=None):
         super().__init__(parent)
         self.process_menu = None
         self.process_action = None
@@ -200,6 +202,7 @@ class PreprocessingMenu(PersistentMenu):
 
         return preprocess
 
+
 class ProcessSelectionMenu(PersistentMenu):
     activate_process_signal = pyqtSignal()
 
@@ -231,6 +234,7 @@ class ProcessSelectionMenu(PersistentMenu):
             for action in self.group.actions():
                 if action is not selected_action:
                     action.setChecked(False)
+
 
 class DenoiseMenu(PersistentMenu):
     activate_preprocess_signal = pyqtSignal()
@@ -267,10 +271,11 @@ class DenoiseMenu(PersistentMenu):
 
 
 class SaveMenu(PersistentMenu):
+    check_for_roi_changes_signal = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.save_action = QAction("&Save current ROI", self)
+        self.save_action = QAction("&Save current Mask", self)
         self.group = QActionGroup(self)
         self.initUi()
 
@@ -278,11 +283,17 @@ class SaveMenu(PersistentMenu):
         self.save_roi_action()
 
     def save_roi_action(self):
-        self.save_action.setStatusTip("Save ROI")
-        self.save_action.setEnabled(False)
-        # self.save_action.triggered.connect()
+        self.save_action.setStatusTip("Save Mask")
+        self.save_action.setEnabled(True)
+        self.triggered.connect(self.check_for_roi_changes_signal.emit)
         self.group.addAction(self.save_action)
         self.addAction(self.save_action)
+
+    def activate_save_roi_action(self):
+        self.save_action.setEnabled(True)
+
+    def deactivate_save_roi_action(self):
+        self.save_action.setEnabled(False)
 
 
 class FileMenu(PersistentMenu):
@@ -290,13 +301,6 @@ class FileMenu(PersistentMenu):
     files_signal = pyqtSignal(tuple)
 
     one_file_signal = pyqtSignal(tuple)
-    check_for_roi_changes_signal = pyqtSignal()
-
-    def enterEvent(self, a0):
-        print(self.save_menu.underMouse())
-        if self.save_menu:
-            print("Entró")
-            self.check_for_roi_changes_signal.emit()
 
     def __init__(self, parent=None):
         super().__init__(parent)
