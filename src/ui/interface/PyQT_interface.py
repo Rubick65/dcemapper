@@ -33,6 +33,7 @@ main_image_minSize = QSize(300, 400)
 
 name_current_dir = os.path.dirname(os.path.abspath(__file__))
 
+
 class MainWindow(QMainWindow):
 
     def __init__(self, nifty_path=None):
@@ -207,9 +208,9 @@ class MainWindow(QMainWindow):
 
         match selected_option:
             case "s":
-                self.rce , self.rce_max = semi_quantitative(self.data, self.img, (output_folder, self.nifty_path))
+                self.rce, self.rce_max = semi_quantitative(self.data, self.img, (output_folder, self.nifty_path))
 
-        self.set_new_data(self.rce) #By default, rce
+        self.set_new_data(self.rce)  # By default, rce
 
     def set_new_data(self, data):
 
@@ -220,8 +221,15 @@ class MainWindow(QMainWindow):
         self.toolbar.roi_menu.activate_roi_selection()
         self.toolbar.viewer_menu.activate_viewer_selection()
 
-        print(data)
+        self.fix_time_dimension()
 
+        roi_slices = get_nifti_slices(self.data)
+        # self.deactivate_time_keys()
+        self.update_widgets(roi_slices)
+
+        self.top_bar.file_menu.change_current_file(data)
+
+    def fix_time_dimension(self):
         self.current_ndim = int(self.data.ndim)
 
         if self.current_ndim == 3:
@@ -229,12 +237,6 @@ class MainWindow(QMainWindow):
             self.data = self.data[:, :, :, np.newaxis]
         else:
             self.active_time_options()
-
-        roi_slices = get_nifti_slices(self.data)
-        #self.deactivate_time_keys()
-        self.update_widgets(roi_slices)
-
-        self.top_bar.file_menu.change_current_file(data)
 
     def update_widgets(self, roi_slices_t0):
 
@@ -269,9 +271,9 @@ class MainWindow(QMainWindow):
         else:
             self.active_sliders()
 
-
         # If is the first time that we create the selector
-        if not self.image_widgets or len(self.image_widgets) != len(images_data) or self.current_columns != self.amount_image_selector_in_row:
+        if not self.image_widgets or len(self.image_widgets) != len(
+                images_data) or self.current_columns != self.amount_image_selector_in_row:
 
             self.current_columns = self.amount_image_selector_in_row
             self.image_widgets = []
@@ -412,6 +414,8 @@ class MainWindow(QMainWindow):
         self.img = img
         self.original_data = self.data.copy()
         self.full_mask = np.ones(self.data.shape[:3], dtype=float)
+
+        self.fix_time_dimension()
 
         # We clean the layout
         self.clear_layout(self.main_layout)
@@ -744,7 +748,7 @@ class MainWindow(QMainWindow):
             case "m":
                 self.set_new_data(self.rce_max)
             case "t":
-                self.set_new_data(self.rce) #Cuando lo tengamos, cambiar
+                self.set_new_data(self.rce)  # Cuando lo tengamos, cambiar
 
     def clear_current_roi(self):
         if self.current_roi is not None:
