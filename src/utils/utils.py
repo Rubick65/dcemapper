@@ -8,6 +8,7 @@ matplotlib.use('QtAgg')
 import matplotlib.pyplot as plt
 import numpy as np
 import shutil as shutil
+import nibabel as nib
 from src.visualization.preprocessing_visualization import init_view
 
 def is_valid_nifti(path):
@@ -193,3 +194,16 @@ def normalize_img(img):
     norm_img = norm_img.astype(np.uint8)
     return norm_img
 
+def save_output_nifti(data, affine, output_folder, nifti_file_path, file_name):
+    img = nib.Nifti1Image(data, affine)
+
+    nii_name = os.path.basename(nifti_file_path).replace(
+        ".nii.gz", "_" + file_name + ".nii.gz"
+    )
+    nii_output_path = os.path.join(
+        output_folder, nii_name
+    )
+
+    nib.save(img, nii_output_path)
+
+    return nii_output_path

@@ -29,6 +29,12 @@ roi_actions_dict = {
     "Polygonal": "ROI selection in form of points selection",
 }
 
+process_view_dict = {
+    "RCE": "",
+    "MAX RCE": "",
+    "TTP":"",
+}
+
 shortcuts_dict = {
     "←": "Navigate to previous slice (Z-axis)",
     "→": "Navigate to next slice (Z-axis)",
