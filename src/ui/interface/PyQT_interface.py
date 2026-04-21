@@ -64,6 +64,8 @@ class MainWindow(QMainWindow):
         self.selector_layout = None
         self.click_pressed = False
         self.record_layout = None
+        self.current_file = None
+        self.last_view_mode = None
         self.data = None
         self.full_mask = None
         self.original_data = None
@@ -174,11 +176,17 @@ class MainWindow(QMainWindow):
         self.set_nifti(nifty_path)
 
         self.check_for_preprocessed_file(nifty_path)
+        self.check_for_processed_file(nifty_path)
 
     def check_for_preprocessed_file(self, file):
         file_name = Path(file).name
         if "preproc" in file_name:
             self.toolbar.roi_menu.activate_roi_selection()
+
+    def check_for_processed_file(self,file):
+        file_name = Path(file).name
+        if "proc" in file_name:
+            self.toolbar.viewer_menu.activate_viewer_selection()
 
     def preprocessing(self, selected_preprocess_options):
         denoise_filter, gibbs = selected_preprocess_options
@@ -218,7 +226,8 @@ class MainWindow(QMainWindow):
         self.nifty_path = data
 
         self.data, self.img = load_nifti(data)
-        self.original_data = self.data
+        self.original_data = self.data.copy()
+
         self.toolbar.roi_menu.activate_roi_selection()
 
         self.fix_time_dimension()
@@ -233,10 +242,8 @@ class MainWindow(QMainWindow):
         self.current_ndim = int(self.data.ndim)
 
         if self.current_ndim == 3:
-            self.deactivate_time_keys()
             self.data = self.data[:, :, :, np.newaxis]
-        else:
-            self.active_time_keys()
+
 
     def update_widgets(self, roi_slices_t0):
 
@@ -269,8 +276,10 @@ class MainWindow(QMainWindow):
 
         if self.current_ndim == 3:
             self.deactivate_sliders()
+            self.deactivate_time_keys()
         else:
             self.active_sliders()
+            self.active_time_keys()
 
         # If is the first time that we create the selector
         if not self.image_widgets or len(self.image_widgets) != len(
@@ -404,7 +413,6 @@ class MainWindow(QMainWindow):
             self.y.setText("0")
 
         self.current_roi = None
-        self.rce_max = None
         self.current_file = nifty_path
 
         self.image_widgets = []
