@@ -34,7 +34,6 @@ class RoiMenu(QMenu):
             self.group.addAction(roi_option)
             self.addAction(roi_option)
 
-
     def handle_exclusivity(self, selected_action: QAction):
         if not selected_action.isChecked():
             self.deactivate_roi_selection_signal.emit()
@@ -51,7 +50,6 @@ class RoiMenu(QMenu):
             if action.text().lower().startswith(letter.lower()):
                 action.trigger()
                 break
-
 
     def activate_roi_selection(self):
         actions = self.group.actions()
