@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import nibabel as nib
 import shutil as shutil
+import nibabel as nib
 from src.visualization.preprocessing_visualization import init_view
 
 
@@ -201,7 +202,6 @@ def normalize_img(img):
     # Convert the data to unsigned 8-bit integer format for QImage compatibility
     norm_img = norm_img.astype(np.uint8)
     return norm_img
-
 
 def save_output_nifti(data, affine, output_folder, nifti_file_path, file_name):
     img = nib.Nifti1Image(data, affine)

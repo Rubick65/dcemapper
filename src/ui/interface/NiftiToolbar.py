@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import QStyle, QMenu, QToolButton
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
 
 from src.ui.Images_Class.NiftiCanvas import NiftiCanvas
-from src.utils.misc import roi_actions_dict
+from src.utils.misc import roi_actions_dict, process_view_dict
 
 
 class RoiMenu(QMenu):
@@ -18,9 +18,6 @@ class RoiMenu(QMenu):
         self.group.triggered.connect(self.handle_exclusivity)
         self.save_action = QAction("&Save ROI", self)
         self.already_processed = False
-        self.initUI()
-
-    def initUI(self):
         self.roi_selection_actions()
 
     def roi_selection_actions(self):
@@ -63,8 +60,56 @@ class RoiMenu(QMenu):
         self.update()
 
 
+class ViewerMenu(QMenu):
+
+    deactive_viewer_selection_signal = pyqtSignal()
+    selected_text_signal = pyqtSignal(str)
+
+    def __init__(self):
+        super().__init__()
+        self.group = QActionGroup(self)
+        self.group.setExclusive(False)
+        self.group.triggered.connect(self.handle_exclusivity)
+        self.save_action = QAction("&Change view", self)
+        self.already_processed = False
+        self.viewer_selection_actions()
+
+    def viewer_selection_actions(self):
+        # Different roi selection options
+        for viewer, tip in process_view_dict.items():
+            viewer_option = QAction(viewer, self)
+            viewer_option.setStatusTip(tip)
+            viewer_option.setCheckable(True)
+            viewer_option.setEnabled(False)
+
+            self.group.addAction(viewer_option)
+            self.addAction(viewer_option)
+
+    def activate_viewer_selection(self):
+        actions = self.group.actions()
+        if not actions:
+            actions = self.actions()
+
+        for action in actions:
+            action.setEnabled(True)
+
+        self.already_processed = True
+        self.update()
+
+    def handle_exclusivity(self, selected_action: QAction):
+        if not selected_action.isChecked():
+            self.deactive_viewer_selection_signal.emit()
+            return
+
+        for action in self.group.actions():
+            if action is not selected_action:
+                action.setChecked(False)
+
+        self.selected_text_signal.emit(selected_action.text()[0: 1].lower())
+
 class NiftiToolbar(NavigationToolbar):
     previous_roi_signal = pyqtSignal()
+
 
     def __init__(self, canvas: NiftiCanvas, parent):
         super().__init__(canvas, parent)
@@ -80,6 +125,8 @@ class NiftiToolbar(NavigationToolbar):
         # Alert to identify if the current z has changed
         self.canvas.z_changed.connect(self.set_history_buttons)
 
+        self.current_process_view = None
+
         self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
         self.add_previous_roi_action()
@@ -87,6 +134,10 @@ class NiftiToolbar(NavigationToolbar):
         self.roi_menu = RoiMenu()
         self.roi_button = QToolButton(self)
         self.add_roi_menu()
+
+        self.viewer_menu = ViewerMenu()
+        self.viewer_button = QToolButton(self)
+        self.add_viewer_menu()
 
         self.set_history_buttons()
 
@@ -136,3 +187,15 @@ class NiftiToolbar(NavigationToolbar):
         previous_roi_action.triggered.connect(self.previous_roi_signal.emit)
 
         self.addAction(previous_roi_action)
+
+    def add_viewer_menu(self):
+        self.viewer_button.setMenu(self.viewer_menu)
+        self.viewer_button.setStyleSheet("QToolButton::menu-indicator { image: none; }")
+        self.viewer_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+
+        icon = self.style().standardIcon(QStyle.StandardPixmap.SP_ArrowUp)
+        self.viewer_button.setIcon(icon)
+
+        self.addWidget(self.viewer_button)
+
+

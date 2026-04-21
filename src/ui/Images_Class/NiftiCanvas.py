@@ -40,10 +40,17 @@ class NiftiCanvas(FigureCanvas):
                                        wrap =True
                                        )
 
-        self.max_z = self.data.shape[2] - 1  # Max number of slides in np array
-        self.max_t = self.data.shape[3] - 1  # Max number of seconds in np array
+        self.has_time = self.data.ndim == 4
 
-        self.current_slice = self.data[:, :, self.current_z, self.current_t].T
+        self.max_z = self.data.shape[2] - 1  # Max number of slides in np array
+
+        if self.has_time:
+            self.max_t = self.data.shape[3] - 1 #Max number of seconds
+            self.current_slice = self.data[:, :, self.current_z, self.current_t].T
+        else:
+            self.max_t = 0
+            self.current_t = 0
+            self.current_slice = self.data[:, :, self.current_z].T
 
         # Image of the np array
         self.img_slice = self.axes.imshow(self.current_slice, cmap=self.cmap)
@@ -75,6 +82,9 @@ class NiftiCanvas(FigureCanvas):
         :param t_index: new time (T)
         :return: Reload of the image with the new T
         """
+        if not self.has_time:
+            return
+
         if t_index < 0 or t_index > self.max_t:
             raise IndexError(f"Error: T={t_index} Out of range (0-{self.max_t})")
         self.current_t = t_index
@@ -121,11 +131,15 @@ class NiftiCanvas(FigureCanvas):
         """
         Function to load/reload the image
         """
-        self.current_slice = self.data[:, :, self.current_z, self.current_t].T  # We update de slice with the changes
+        # We update de slice with the changes
+        self.current_slice = self.data[:, :, self.current_z, self.current_t].T
         self.slice_text.set_text(f"Slice: {self.current_z + 1}")
-        #self.subject_text.set_text(f"Subject: {self.subject_name}")
-        self.img_slice.set_data(self.current_slice)
-        self.draw()
+        try:
+            self.img_slice.set_data(self.current_slice)
+            self.draw()
+        except Exception as e:
+            print(f"Error en load_image: {e}")
+
 
     def _on_click(self, event):
         """
@@ -163,5 +177,12 @@ class NiftiCanvas(FigureCanvas):
     def update_image(self, new_data):
         self.data = new_data
         self.max_z = self.data.shape[2] - 1
-        self.max_t = self.data.shape[3] - 1
+        self.has_time = self.data.ndim == 4
+
+        if self.has_time:
+            self.max_t = self.data.shape[3] - 1
+        else:
+            self.max_t = 0
+
+        self.current_t = 0
         self.load_image()

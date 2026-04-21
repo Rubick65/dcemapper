@@ -24,9 +24,17 @@ def semi_quantitative(data, img, folders: tuple, semi_quantitative_data: tuple =
 
         rce = calculate_rce(data, reference_value)
 
+        rce_max = get_rce_max_value(rce)
+
+        print(rce_max)
+
         retry = create_general_preprocess_output(data, rce, "Processed")
 
-    return save_output_nifti(rce, img.affine, output_folder, nifti_file_path, "proc_rce")
+        rce_save = save_output_nifti(rce, img.affine, output_folder, nifti_file_path,"rce")
+
+        rce_max_save = save_output_nifti(rce_max, img.affine, output_folder, nifti_file_path,"rce_max")
+
+    return rce_save, rce_max_save
 
 
 def get_semi_quantitative_data(semi_quantitative_data: tuple):
@@ -42,12 +50,16 @@ def get_semi_quantitative_data(semi_quantitative_data: tuple):
 
         return semi_quantitative_data["Frame Init Contrast"], semi_quantitative_data["Frame Period"]
 
+def get_rce_max_value(data):
+    return np.max(data,axis = 3)
 
-def calculate_reference_value(data, n_pixeles):
-    S0 = np.mean(data[:, :, :, :n_pixeles,], axis=3)
+def get_ttp_rce_max_value(data):
+    return
+
+def calculate_reference_value(data, frame_ini_contrast):
+    S0 = np.mean(data[:, :, :, :frame_ini_contrast,], axis=3)
 
     return S0
-
 
 def calculate_rce(data, reference_value):
     data = data.astype(np.float32)

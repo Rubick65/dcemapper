@@ -33,7 +33,6 @@ main_image_minSize = QSize(300, 400)
 
 name_current_dir = os.path.dirname(os.path.abspath(__file__))
 
-
 class MainWindow(QMainWindow):
 
     def __init__(self, nifty_path=None):
@@ -87,6 +86,10 @@ class MainWindow(QMainWindow):
         self.vertices = None
         self.ellipsis_center = None
         self.radius = None
+        self.rce = None
+        self.rce_max = None
+        self.current_ndim = None
+        self.time_keys = [Qt.Key.Key_Up, Qt.Key.Key_Down, Qt.Key.Key_Space]
         self.roi_selector_list = []
         self.selected_roi = ""
         self.top_bar = TopMenu()
@@ -199,13 +202,14 @@ class MainWindow(QMainWindow):
         selected_option = selected_process_option[1:2].lower()
         output_folder = create_output_folder(self.current_subject if self.current_subject else "Unknown",
                                              self.derivative_folder)
-        data = ""
+        self.rce = ""
+        self.rce_max = ""
 
         match selected_option:
             case "s":
-                data = semi_quantitative(self.data, self.img, (output_folder, self.nifty_path))
+                self.rce , self.rce_max = semi_quantitative(self.data, self.img, (output_folder, self.nifty_path))
 
-        self.set_new_data(data)
+        self.set_new_data(self.rce) #By default, rce
 
     def set_new_data(self, data):
 
@@ -214,8 +218,20 @@ class MainWindow(QMainWindow):
         self.data, self.img = load_nifti(data)
         self.original_data = self.data
         self.toolbar.roi_menu.activate_roi_selection()
+        self.toolbar.viewer_menu.activate_viewer_selection()
+
+        print(data)
+
+        self.current_ndim = int(self.data.ndim)
+
+        if self.current_ndim == 3:
+            self.deactivate_time_keys()
+            self.data = self.data[:, :, :, np.newaxis]
+        else:
+            self.active_time_options()
 
         roi_slices = get_nifti_slices(self.data)
+        #self.deactivate_time_keys()
         self.update_widgets(roi_slices)
 
         self.top_bar.file_menu.change_current_file(data)
@@ -236,11 +252,26 @@ class MainWindow(QMainWindow):
         if self.canvas:
             self.canvas.update_image(self.data)
 
+    def deactivate_time_keys(self):
+        for key in self.time_keys:
+            if key in self._shortcuts:
+                self._shortcuts[key].setEnabled(False)
+
+    def active_time_options(self):
+        for key in self.time_keys:
+            if key in self._shortcuts:
+                self._shortcuts[key].setEnabled(True)
+
     def update_image_selector(self, images_data):
 
+        if self.current_ndim == 3:
+            self.deactivate_sliders()
+        else:
+            self.active_sliders()
+
+
         # If is the first time that we create the selector
-        if not self.image_widgets or len(self.image_widgets) != len(
-                images_data) or self.current_columns != self.amount_image_selector_in_row:
+        if not self.image_widgets or len(self.image_widgets) != len(images_data) or self.current_columns != self.amount_image_selector_in_row:
 
             self.current_columns = self.amount_image_selector_in_row
             self.image_widgets = []
@@ -370,12 +401,14 @@ class MainWindow(QMainWindow):
             self.y.setText("0")
 
         self.current_roi = None
+        self.rce_max = None
         self.current_file = nifty_path
 
         self.image_widgets = []
 
         self.nifty_path = nifty_path
         self.data, img = load_nifti(self.nifty_path)
+        self.current_ndim = int(self.data.ndim)
         self.img = img
         self.original_data = self.data.copy()
         self.full_mask = np.ones(self.data.shape[:3], dtype=float)
@@ -445,22 +478,27 @@ class MainWindow(QMainWindow):
         main_left_layout = QVBoxLayout(main_left_widget)
         main_left_layout.setContentsMargins(0, 0, 0, 0)
 
-        num_t_points = self.data.shape[3] if self.data is not None else 1
+        if self.current_ndim == 4:
+            num_t_points = self.data.shape[3]
 
-        # Creation of the T and fps sliders
+            # Creation of the T and fps sliders
+            slider_t_group, self.slider_t, self.slider_t_input = self.slider_label(
+                "Time Point (T)", 0, num_t_points - 1, 0,
+                self.update_time_from_slider, self.update_time_from_text, True
+            )
 
-        slider_t_group, self.slider_t, self.slider_t_input = self.slider_label(
-            "Time Point (T)", 0, num_t_points - 1, 0,
-            self.update_time_from_slider, self.update_time_from_text, True
-        )
+            slider_fps_group, self.slider_fps, self.slider_fps_input = self.slider_label(
+                "FPS", 1, 60, 30,
+                self.update_fps_from_slider, self.update_fps_from_text
+            )
 
-        slider_fps_group, self.slider_fps, self.slider_fps_input = self.slider_label(
-            "FPS", 1, 60, 30,
-            self.update_fps_from_slider, self.update_fps_from_text
-        )
+            main_left_layout.addWidget(slider_t_group)
+            main_left_layout.addWidget(slider_fps_group)
 
-        main_left_layout.addWidget(slider_t_group)
-        main_left_layout.addWidget(slider_fps_group)
+            self.active_sliders()
+
+        else:
+            self.deactivate_sliders()
 
         container = QWidget()
         self.selector_layout = QVBoxLayout(container)
@@ -481,6 +519,18 @@ class MainWindow(QMainWindow):
         main_left_widget.installEventFilter(self)
 
         return main_left_widget
+
+    def deactivate_sliders(self):
+        self.slider_t.setEnabled(False)
+        self.slider_t_input.setEnabled(False)
+        self.slider_fps.setEnabled(False)
+        self.slider_fps_input.setEnabled(False)
+
+    def active_sliders(self):
+        self.slider_t.setEnabled(True)
+        self.slider_t_input.setEnabled(True)
+        self.slider_fps.setEnabled(True)
+        self.slider_fps_input.setEnabled(True)
 
     def slider_label(self, label_text, min_range, max_range, init_val, slider_callback, text_callback,
                      stop_movie=False):
@@ -634,6 +684,8 @@ class MainWindow(QMainWindow):
         self.toolbar.roi_menu.selected_text_signal.connect(self.change_roi_selector)
         self.toolbar.roi_menu.deactivate_roi_selection_signal.connect(self.deactivate_roi_selection)
         self.toolbar.previous_roi_signal.connect(self.go_to_previous_roi)
+        self.toolbar.viewer_menu.selected_text_signal.connect(self.change_viewer_selector)
+        self.toolbar.viewer_menu.deactive_viewer_selection_signal.connect(self.deactivate_viewer_selection)
         container.installEventFilter(self)
 
         return container
@@ -684,6 +736,15 @@ class MainWindow(QMainWindow):
                 self.create_elliptical_selector()
             case "p":
                 self.create_polygon_selector()
+
+    def change_viewer_selector(self, selected_view):
+        match selected_view:
+            case "r":
+                self.set_new_data(self.rce)
+            case "m":
+                self.set_new_data(self.rce_max)
+            case "t":
+                self.set_new_data(self.rce) #Cuando lo tengamos, cambiar
 
     def clear_current_roi(self):
         if self.current_roi is not None:
@@ -743,6 +804,9 @@ class MainWindow(QMainWindow):
 
     def deactivate_roi_selection(self):
         self.clear_current_roi()
+
+    def deactivate_viewer_selection(self):
+        print("a")
 
     def go_to_previous_roi(self):
         z_index = self.canvas.current_z
