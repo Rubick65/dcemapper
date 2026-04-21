@@ -7,9 +7,11 @@ from src.visualization.filter_visualization import ask_user_parameters
 matplotlib.use('QtAgg')
 import matplotlib.pyplot as plt
 import numpy as np
+import nibabel as nib
 import shutil as shutil
 import nibabel as nib
 from src.visualization.preprocessing_visualization import init_view
+
 
 def is_valid_nifti(path):
     if not path.endswith(('.nii.gz', '.nii')):
@@ -149,6 +151,13 @@ def is_nii(filename):
         filename = str(filename)
 
     return filename.endswith(".nii") or filename.endswith(".nii.gz")
+
+
+def is_valid_mask(filename):
+    if not isinstance(filename, str):
+        filename = str(filename)
+
+    return filename.endswith("_mask.nii") or filename.endswith("_mask.nii.gz")
 
 
 def create_output_folder(subject, derivatives_folder):

@@ -20,7 +20,8 @@ from src.ui.Images_Class.IntensityGraph import IntensityGraph
 from src.ui.Images_Class.NiftiCanvas import NiftiCanvas
 from src.ui.file_explorer.file_explorer import TopMenu
 from src.ui.interface.NiftiToolbar import NiftiToolbar
-from src.utils.utils import create_output_folder, get_correct_subject, normalize_img
+from src.utils.utils import create_output_folder, get_correct_subject, normalize_img, save_output_nifti, is_valid_mask
+from src.visualization.Alert_Message_Visualization import AlertDialog
 
 # -----------------CONSTANTS-----------------
 window_minSize = QSize(1125, 500)
@@ -94,10 +95,9 @@ class MainWindow(QMainWindow):
         self.top_bar = TopMenu()
         self.top_bar.deactivate()
         self.setMenuBar(self.top_bar)
-        self.top_bar.file_menu.files_signal.connect(self.set_various_files)
-        self.top_bar.file_menu.one_file_signal.connect(self.set_various_files)
-        self.top_bar.preprocessing_menu.preprocess_signal.connect(self.preprocessing)
-        self.top_bar.process_menu.process_signal.connect(self.processing)
+        self.general_signals_connections()
+
+        self.alert_dialog = None
 
         # Main container
         main_widget = QWidget()
@@ -116,6 +116,14 @@ class MainWindow(QMainWindow):
 
         main_widget.setLayout(self.main_layout)
 
+    def general_signals_connections(self):
+        self.top_bar.file_menu.files_signal.connect(self.set_various_files)
+        self.top_bar.file_menu.one_file_signal.connect(self.set_various_files)
+        self.top_bar.preprocessing_menu.preprocess_signal.connect(self.preprocessing)
+        self.top_bar.process_menu.process_signal.connect(self.processing)
+        self.top_bar.file_menu.save_menu.check_for_roi_changes_signal.connect(self.check_for_creating_roi)
+        self.top_bar.file_menu.save_menu.open_selected_mask_signal.connect(self.open_mask)
+
     def next_movie_frame(self):
         """
         To advance the T of the nifti image at the set frame rate
@@ -133,6 +141,23 @@ class MainWindow(QMainWindow):
         else:
             self.movie_timer.stop()
             self.slider_t.setValue(0)
+
+    def check_for_creating_roi(self):
+
+        try:
+            if self.full_mask is None or np.all(self.full_mask == 1.0):
+                self.create_alert_dialog("Mask not found", "Mask was not found, please create one.")
+            else:
+                output_folder = self.top_bar.file_menu.file_selector(True)
+                save_output_nifti(self.full_mask, self.img.affine, str(output_folder[0]), self.nifty_path, "mask")
+        except ValueError:
+            pass
+
+    def create_alert_dialog(self, title, message):
+        self.alert_dialog = AlertDialog(title, message)
+
+        self.alert_dialog.show()
+        self.alert_dialog.raise_()
 
     def set_various_files(self, nifty_data):
         nifty_path, derivative_folder = nifty_data
@@ -165,9 +190,8 @@ class MainWindow(QMainWindow):
                 data = denoise_init_one_file(self.nifty_path, output_folder, denoise_filter)
                 if data is None:
                     return
-
         except Exception:
-            return
+            pass
 
         if gibbs:
             data = gibbs_remove([data])
@@ -279,6 +303,18 @@ class MainWindow(QMainWindow):
                 q_img = QImage(norm_img.tobytes(), width, height, QImage.Format.Format_Grayscale8).copy()
                 pixmap = QPixmap.fromImage(q_img)
                 img_widget.setPixmap(pixmap)
+
+    def open_mask(self):
+        try:
+            mask_file_list = self.top_bar.file_menu.file_selector(False)
+            mask_file = mask_file_list[0]
+            mask_filename = Path(mask_file).name
+
+            if is_valid_mask(mask_filename) and self.original_data is not None:
+                self.full_mask, _ = load_nifti(str(mask_file))
+                self.update_canvas_with_roi()
+        except ValueError:
+            pass
 
     def selector_image_creation(self, image_data, size, index):
         """
@@ -653,10 +689,6 @@ class MainWindow(QMainWindow):
         container.installEventFilter(self)
 
         return container
-
-    def check_changes_in_mask(self):
-        if self.original_data == self.data:
-            print("Entró")
 
     def create_graphic(self, x, y, value):
         """
