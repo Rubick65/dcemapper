@@ -17,7 +17,7 @@ class RoiMenu(QMenu):
         self.group.setExclusive(False)
         self.group.triggered.connect(self.handle_exclusivity)
         self.save_action = QAction("&Save ROI", self)
-        self.already_processed = False
+        self.already_processed_roi = False
         self.roi_selection_actions()
 
     def roi_selection_actions(self):
@@ -56,7 +56,7 @@ class RoiMenu(QMenu):
         for action in actions:
             action.setEnabled(True)
 
-        self.already_processed = True
+        self.already_processed_roi = True
         self.update()
 
 
