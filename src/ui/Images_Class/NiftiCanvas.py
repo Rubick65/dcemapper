@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
+import numpy as np
 from PyQt6.QtCore import pyqtSignal
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+
 
 class NiftiCanvas(FigureCanvas):
     """
@@ -8,14 +10,14 @@ class NiftiCanvas(FigureCanvas):
     """
     z_changed = pyqtSignal(int)
 
-    def __init__(self, np_array,subject_name):
+    def __init__(self, np_array, subject_name, cmap="gray"):
         self.fig, self.axes = plt.subplots()
         self.axes.axis('off')  # Remove the axis numbers
         super().__init__(self.fig)
 
         self.data = np_array
         self.subject_name = subject_name
-        self.cmap = 'gray'  # Color map, by default in black and white colors
+        self.cmap = cmap  # Color map, by default in black and white colors
         self.current_z = 0  # Current slide
         self.current_t = 0  # Current time
 
@@ -30,22 +32,22 @@ class NiftiCanvas(FigureCanvas):
                                         )
 
         self.subject_text = self.fig.text(0.5, -0.05,
-                                       f"Subject: {self.subject_name}",
-                                       transform=self.axes.transAxes,
-                                       color='white',
-                                       fontsize=15,
-                                       family = "Georgia",
-                                       ha='center',
-                                       va='top',
-                                       wrap =True
-                                       )
+                                          f"Subject: {self.subject_name}",
+                                          transform=self.axes.transAxes,
+                                          color='white',
+                                          fontsize=15,
+                                          family="Georgia",
+                                          ha='center',
+                                          va='top',
+                                          wrap=True
+                                          )
 
         self.has_time = self.data.ndim == 4
 
         self.max_z = self.data.shape[2] - 1  # Max number of slides in np array
 
         if self.has_time:
-            self.max_t = self.data.shape[3] - 1 #Max number of seconds
+            self.max_t = self.data.shape[3] - 1  # Max number of seconds
             self.current_slice = self.data[:, :, self.current_z, self.current_t].T
         else:
             self.max_t = 0
@@ -60,7 +62,7 @@ class NiftiCanvas(FigureCanvas):
                                        transform=self.axes.transAxes,
                                        color='white',
                                        fontsize=15,
-                                       family = "Georgia",
+                                       family="Georgia",
                                        ha='center',
                                        va='top'
                                        )
@@ -119,7 +121,7 @@ class NiftiCanvas(FigureCanvas):
         """
         super().resizeEvent(event)
 
-        fontsize = max(8,event.size().width() / 40)
+        fontsize = max(8, event.size().width() / 40)
 
         self.slice_text.set_fontsize(fontsize)
         self.subject_text.set_fontsize(fontsize)
@@ -139,7 +141,6 @@ class NiftiCanvas(FigureCanvas):
             self.draw()
         except Exception as e:
             print(f"Error en load_image: {e}")
-
 
     def _on_click(self, event):
         """
@@ -185,4 +186,13 @@ class NiftiCanvas(FigureCanvas):
             self.max_t = 0
 
         self.current_t = 0
+
+        v_min = np.nanpercentile(new_data, 2)
+        v_max = np.nanpercentile(new_data, 98)
+
+        self.img_slice.set_clim(vmin=v_min, vmax=v_max)
         self.load_image()
+
+    def update_cmap(self, new_cmap):
+        self.cmap = new_cmap
+        self.img_slice.set_cmap(self.cmap)

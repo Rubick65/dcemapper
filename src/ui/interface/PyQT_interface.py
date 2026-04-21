@@ -91,6 +91,7 @@ class MainWindow(QMainWindow):
         self.radius = None
         self.rce = None
         self.rce_max = None
+        self.tto_rce_max = None
         self.current_ndim = None
         self.time_keys = [Qt.Key.Key_Up, Qt.Key.Key_Down, Qt.Key.Key_Space]
         self.roi_selector_list = []
@@ -216,7 +217,10 @@ class MainWindow(QMainWindow):
 
         match selected_option:
             case "s":
-                self.rce, self.rce_max = semi_quantitative(self.data, self.img, (output_folder, self.nifty_path))
+                self.rce, self.rce_max, self.tto_rce_max = semi_quantitative(self.data, self.img,
+                                                                             (output_folder, self.nifty_path))
+
+        self.canvas.update_cmap("jet")
 
         self.toolbar.viewer_menu.activate_viewer_selection()
         self.set_new_data(self.rce) #By default, rce
@@ -760,7 +764,7 @@ class MainWindow(QMainWindow):
             case "m":
                 self.set_new_data(self.rce_max)
             case "t":
-                self.set_new_data(self.rce)  # Cuando lo tengamos, cambiar
+                self.set_new_data(self.tto_rce_max)  # Cuando lo tengamos, cambiar
 
     def clear_current_roi(self):
         if self.current_roi is not None:

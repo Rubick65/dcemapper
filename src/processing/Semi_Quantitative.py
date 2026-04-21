@@ -1,11 +1,11 @@
-import os
-
-import nibabel as nib
 import numpy as np
+from matplotlib import pyplot as plt
 
 from src.io.nifti_io import load_nifti
-from src.utils.utils import create_general_preprocess_output, save_output_nifti
+from src.utils.utils import create_general_preprocess_output, save_output_nifti, normalize_img
 from src.visualization.filter_visualization import ask_user_parameters
+
+mask = None
 
 
 def semi_quantitative(data, img, folders: tuple, semi_quantitative_data: tuple = None):
@@ -28,11 +28,13 @@ def semi_quantitative(data, img, folders: tuple, semi_quantitative_data: tuple =
 
         retry = create_general_preprocess_output(data, rce, "Processed")
 
-        rce_save = save_output_nifti(rce, img.affine, output_folder, nifti_file_path,"rce_proc")
+    rce_save = save_output_nifti(rce, img.affine, output_folder, nifti_file_path,"rce_proc")
 
-        rce_max_save = save_output_nifti(rce_max, img.affine, output_folder, nifti_file_path,"rce_max_proc")
+    rce_max_save = save_output_nifti(rce_max, img.affine, output_folder, nifti_file_path,"rce_max_proc")
 
-    return rce_save, rce_max_save
+    tto_rce_max_save = save_output_nifti(tto_rce_max, img.affine, output_folder, nifti_file_path, "tto_rce_max")
+
+    return rce_save, rce_max_save, tto_rce_max_save
 
 
 def get_semi_quantitative_data(semi_quantitative_data: tuple):
@@ -48,18 +50,34 @@ def get_semi_quantitative_data(semi_quantitative_data: tuple):
 
         return semi_quantitative_data["Frame Init Contrast"], semi_quantitative_data["Frame Period"]
 
-def get_rce_max_value(data):
-    return np.max(data,axis = 3)
 
-def get_ttp_rce_max_value(data):
-    return
+def get_rce_max_value(rce):
+    return np.max(rce, axis=3)
+
+
+def get_ttp_rce_max_value(rce, frame_period):
+
+    max_index = np.argmax(rce, axis=3)
+
+    time_to_peak = max_index * frame_period
+
+    tto_rce_max = np.where(mask, time_to_peak, 0)
+
+    ttp_norm = normalize_img(tto_rce_max)
+
+    norm_img = (ttp_norm * 255).astype(np.uint8)
+
+    return norm_img
+
 
 def calculate_reference_value(data, frame_ini_contrast):
     S0 = np.mean(data[:, :, :, :frame_ini_contrast,], axis=3)
 
     return S0
 
+
 def calculate_rce(data, reference_value):
+    global mask
     data = data.astype(np.float32)
     s0 = reference_value.astype(np.float32)
 
@@ -75,10 +93,6 @@ def calculate_rce(data, reference_value):
     rce = np.clip(rce, 0, 500)
 
     return rce
-
-
-def calculate_rce_max(frame_period):
-    pass
 
 
 def main():
