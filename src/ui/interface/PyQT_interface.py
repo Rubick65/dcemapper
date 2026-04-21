@@ -209,6 +209,7 @@ class MainWindow(QMainWindow):
             case "s":
                 self.rce , self.rce_max = semi_quantitative(self.data, self.img, (output_folder, self.nifty_path))
 
+        self.toolbar.viewer_menu.activate_viewer_selection()
         self.set_new_data(self.rce) #By default, rce
 
     def set_new_data(self, data):
@@ -218,7 +219,6 @@ class MainWindow(QMainWindow):
         self.data, self.img = load_nifti(data)
         self.original_data = self.data
         self.toolbar.roi_menu.activate_roi_selection()
-        self.toolbar.viewer_menu.activate_viewer_selection()
 
         print(data)
 
@@ -228,7 +228,7 @@ class MainWindow(QMainWindow):
             self.deactivate_time_keys()
             self.data = self.data[:, :, :, np.newaxis]
         else:
-            self.active_time_options()
+            self.active_time_keys()
 
         roi_slices = get_nifti_slices(self.data)
         #self.deactivate_time_keys()
@@ -257,7 +257,8 @@ class MainWindow(QMainWindow):
             if key in self._shortcuts:
                 self._shortcuts[key].setEnabled(False)
 
-    def active_time_options(self):
+
+    def active_time_keys(self):
         for key in self.time_keys:
             if key in self._shortcuts:
                 self._shortcuts[key].setEnabled(True)
@@ -478,27 +479,30 @@ class MainWindow(QMainWindow):
         main_left_layout = QVBoxLayout(main_left_widget)
         main_left_layout.setContentsMargins(0, 0, 0, 0)
 
+        # Creation of the T and fps sliders
+        slider_t_group, self.slider_t, self.slider_t_input = self.slider_label(
+            "Time Point (T)", 0, 0, 0,
+            self.update_time_from_slider, self.update_time_from_text, True
+        )
+
+        slider_fps_group, self.slider_fps, self.slider_fps_input = self.slider_label(
+            "FPS", 0, 60, 30,
+            self.update_fps_from_slider, self.update_fps_from_text
+        )
+
+        main_left_layout.addWidget(slider_t_group)
+        main_left_layout.addWidget(slider_fps_group)
+
         if self.current_ndim == 4:
             num_t_points = self.data.shape[3]
-
-            # Creation of the T and fps sliders
-            slider_t_group, self.slider_t, self.slider_t_input = self.slider_label(
-                "Time Point (T)", 0, num_t_points - 1, 0,
-                self.update_time_from_slider, self.update_time_from_text, True
-            )
-
-            slider_fps_group, self.slider_fps, self.slider_fps_input = self.slider_label(
-                "FPS", 1, 60, 30,
-                self.update_fps_from_slider, self.update_fps_from_text
-            )
-
-            main_left_layout.addWidget(slider_t_group)
-            main_left_layout.addWidget(slider_fps_group)
-
+            self.slider_t.setMaximum(num_t_points - 1)
+            self.slider_t_input.setValidator(QIntValidator(0, num_t_points, self))
             self.active_sliders()
+            self.active_time_keys()
 
         else:
             self.deactivate_sliders()
+            self.deactivate_time_keys()
 
         container = QWidget()
         self.selector_layout = QVBoxLayout(container)
