@@ -26,13 +26,15 @@ def semi_quantitative(data, img, folders: tuple, semi_quantitative_data: tuple =
 
         rce_max = get_rce_max_value(rce)
 
+        tto_rce_max = get_ttp_rce_max_value(rce, frame_period)
+
         retry = create_general_preprocess_output(data, rce, "Processed")
 
-    rce_save = save_output_nifti(rce, img.affine, output_folder, nifti_file_path,"rce_proc")
+    rce_save = save_output_nifti(rce, img.affine, output_folder, nifti_file_path, "rce_proc")
 
-    rce_max_save = save_output_nifti(rce_max, img.affine, output_folder, nifti_file_path,"rce_max_proc")
+    rce_max_save = save_output_nifti(rce_max, img.affine, output_folder, nifti_file_path, "rce_max_proc")
 
-    tto_rce_max_save = save_output_nifti(tto_rce_max, img.affine, output_folder, nifti_file_path, "tto_rce_max")
+    tto_rce_max_save = save_output_nifti(tto_rce_max, img.affine, output_folder, nifti_file_path, "tto_rce_max_proc")
 
     return rce_save, rce_max_save, tto_rce_max_save
 
@@ -56,7 +58,6 @@ def get_rce_max_value(rce):
 
 
 def get_ttp_rce_max_value(rce, frame_period):
-
     max_index = np.argmax(rce, axis=3)
 
     time_to_peak = max_index * frame_period

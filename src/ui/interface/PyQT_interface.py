@@ -188,6 +188,7 @@ class MainWindow(QMainWindow):
         file_name = Path(file).name
         if "proc" in file_name:
             self.toolbar.viewer_menu.activate_viewer_selection()
+            self.canvas.update_cmap("jet")
 
     def preprocessing(self, selected_preprocess_options):
         denoise_filter, gibbs = selected_preprocess_options
