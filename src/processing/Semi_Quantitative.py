@@ -82,7 +82,7 @@ def calculate_rce(data, reference_value):
     data = data.astype(np.float32)
     s0 = reference_value.astype(np.float32)
 
-    mask = s0 > (np.mean(s0) * 0.3)
+    mask = s0 > (np.mean(s0) * 0.8)
 
     s0_expanded = s0[:, :, :, np.newaxis]
     mask_expanded = mask[:, :, :, np.newaxis]
