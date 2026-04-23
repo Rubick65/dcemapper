@@ -282,7 +282,7 @@ class MainWindow(QMainWindow):
                 self.main_splitter.insertWidget(0, self.left_container)
 
         if self.canvas:
-            self.canvas.update_image(self.data)
+            self.canvas.update_image(self.data,self.canvas.current_t)
 
     def deactivate_time_keys(self):
         for key in self.time_keys:
@@ -420,8 +420,6 @@ class MainWindow(QMainWindow):
             self.canvas.deleteLater()
             self.canvas = None
 
-        if self.slider_t:
-            self.slider_t.setValue(0)
 
         if self.graphic:
             self.graphic.close_graph()
@@ -571,6 +569,7 @@ class MainWindow(QMainWindow):
         self.slider_t_input.setEnabled(True)
         self.slider_fps.setEnabled(True)
         self.slider_fps_input.setEnabled(True)
+        print(self.slider_t.value())
 
     def slider_label(self, label_text, min_range, max_range, init_val, slider_callback, text_callback,
                      stop_movie=False):
@@ -725,7 +724,7 @@ class MainWindow(QMainWindow):
         self.toolbar.roi_menu.deactivate_roi_selection_signal.connect(self.deactivate_roi_selection)
         self.toolbar.previous_roi_signal.connect(self.go_to_previous_roi)
         self.toolbar.viewer_menu.selected_text_signal.connect(self.change_viewer_selector)
-        self.toolbar.viewer_menu.deactive_viewer_selection_signal.connect(self.deactivate_viewer_selection)
+        self.toolbar.viewer_menu.deactivate_viewer_selection_signal.connect(self.deactivate_viewer_selection)
         container.installEventFilter(self)
 
         return container
@@ -782,8 +781,10 @@ class MainWindow(QMainWindow):
             case "r":
                 self.set_new_data(self.rce)
             case "m":
+                self.canvas.current_t = 0
                 self.set_new_data(self.rce_max)
             case "t":
+                self.canvas.current_t = 0
                 self.set_new_data(self.tto_rce_max)  # Cuando lo tengamos, cambiar
 
     def clear_current_roi(self):
