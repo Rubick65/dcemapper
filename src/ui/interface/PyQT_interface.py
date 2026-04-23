@@ -89,9 +89,6 @@ class MainWindow(QMainWindow):
         self.vertices = None
         self.ellipsis_center = None
         self.radius = None
-        self.rce = None
-        self.rce_max = None
-        self.tto_rce_max = None
         self.current_ndim = None
         self.time_keys = [Qt.Key.Key_Up, Qt.Key.Key_Down, Qt.Key.Key_Space]
         self.roi_selector_list = []
@@ -213,18 +210,17 @@ class MainWindow(QMainWindow):
         selected_option = selected_process_option[1:2].lower()
         output_folder = create_output_folder(self.current_subject if self.current_subject else "Unknown",
                                              self.derivative_folder)
-        self.rce = ""
-        self.rce_max = ""
 
         match selected_option:
             case "s":
-                self.rce, self.rce_max, self.tto_rce_max = semi_quantitative(self.data, self.img,
-                                                                             (output_folder, self.nifty_path))
+                rce, rce_max, tto_rce_max = semi_quantitative(self.data, self.img,
+                                                              (output_folder, self.nifty_path))
+                self.top_bar.file_menu.update_processed_file_list(rce, rce_max, tto_rce_max)
 
         self.canvas.update_cmap("jet")
 
         self.toolbar.viewer_menu.activate_viewer_selection()
-        self.set_new_data(self.rce)  # By default, rce
+        self.set_new_data(rce)  # By default, rce
 
     def set_new_data(self, data):
 
@@ -757,15 +753,16 @@ class MainWindow(QMainWindow):
                 self.create_polygon_selector()
 
     def change_viewer_selector(self, selected_view):
+        rce, rce_max, tto_rce_max = self.top_bar.file_menu.get_current_processed_file()
         match selected_view:
             case "r":
-                self.set_new_data(self.rce)
+                self.set_new_data(rce)
                 self.toolbar.roi_menu.activate_roi_selection()
             case "m":
-                self.set_new_data(self.rce_max)
+                self.set_new_data(rce_max)
                 self.toolbar.roi_menu.deactivate_roi_selection()
             case "t":
-                self.set_new_data(self.tto_rce_max)  # Cuando lo tengamos, cambiar
+                self.set_new_data(tto_rce_max)  # Cuando lo tengamos, cambiar
                 self.toolbar.roi_menu.deactivate_roi_selection()
 
     def clear_current_roi(self):
