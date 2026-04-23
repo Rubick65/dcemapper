@@ -33,7 +33,6 @@ main_image_minSize = QSize(300, 400)
 
 name_current_dir = os.path.dirname(os.path.abspath(__file__))
 
-
 class MainWindow(QMainWindow):
 
     def __init__(self, nifty_path=None):
@@ -123,6 +122,7 @@ class MainWindow(QMainWindow):
     def general_signals_connections(self):
         self.top_bar.file_menu.files_signal.connect(self.set_various_files)
         self.top_bar.file_menu.one_file_signal.connect(self.set_various_files)
+        self.top_bar.file_menu.proc_file_signal.connect(self.set_proc_files)
         self.top_bar.preprocessing_menu.preprocess_signal.connect(self.preprocessing)
         self.top_bar.process_menu.process_signal.connect(self.processing)
         self.top_bar.file_menu.save_menu.check_for_roi_changes_signal.connect(self.check_for_creating_roi)
@@ -165,19 +165,37 @@ class MainWindow(QMainWindow):
 
     def set_various_files(self, nifty_data):
         nifty_path, derivative_folder = nifty_data
+
         if isinstance(nifty_path, tuple):
             self.current_subject = nifty_path[0]  # Name of the subject
             nifty_path = nifty_path[1]
+
         else:
             # If it is a single file, we extract the subject name from the file structure
             self.current_subject = get_correct_subject(Path(nifty_path))
 
+        if "proc" in nifty_path:
+            nifty_path = nifty_path.replace("tto_rce_max_proc", "rce_proc").replace("rce_max_proc", "rce_proc")
+
+        self.derivative_folder = derivative_folder
+        self.set_nifti(nifty_path)
+        self.check_for_preprocessed_file(nifty_path)
+        self.check_for_processed_file(nifty_path)
+
+    def set_proc_files(self, nifty_data):
+        nifty_path, derivative_folder = nifty_data
+
+        self.rce = nifty_path.replace("tto_rce_max_proc", "rce_proc").replace("rce_max_proc", "rce_proc")
+        self.rce_max = self.rce.replace("rce_proc", "rce_max_proc")
+        self.tto_rce_max = self.rce.replace("rce_proc", "tto_rce_max_proc")
+
+        self.current_subject = get_correct_subject(Path(self.rce))
         self.derivative_folder = derivative_folder
 
         self.set_nifti(nifty_path)
 
-        self.check_for_preprocessed_file(nifty_path)
-        self.check_for_processed_file(nifty_path)
+        self.check_for_preprocessed_file(self.rce)
+        self.check_for_processed_file(self.rce)
 
     def check_for_preprocessed_file(self, file):
         file_name = Path(file).name
@@ -215,11 +233,11 @@ class MainWindow(QMainWindow):
                                              self.derivative_folder)
         self.rce = ""
         self.rce_max = ""
+        self.tto_rce_max = ""
 
         match selected_option:
             case "s":
-                self.rce, self.rce_max, self.tto_rce_max = semi_quantitative(self.data, self.img,
-                                                                             (output_folder, self.nifty_path))
+                self.rce, self.rce_max, self.tto_rce_max = semi_quantitative(self.data, self.img,(output_folder, self.nifty_path))
 
         self.canvas.update_cmap("jet")
 
@@ -424,6 +442,7 @@ class MainWindow(QMainWindow):
 
         self.nifty_path = nifty_path
         self.data, img = load_nifti(self.nifty_path)
+
         self.current_ndim = int(self.data.ndim)
         self.img = img
         self.original_data = self.data.copy()
@@ -827,7 +846,7 @@ class MainWindow(QMainWindow):
         self.clear_current_roi()
 
     def deactivate_viewer_selection(self):
-        print("a")
+        pass
 
     def go_to_previous_roi(self):
         z_index = self.canvas.current_z
