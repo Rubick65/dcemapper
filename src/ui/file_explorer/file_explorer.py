@@ -313,6 +313,7 @@ class FileMenu(PersistentMenu):
         self.group = QActionGroup(self)
         self.group.setExclusive(False)
         self.file_list = []
+        self.processed_file_list = []
         self.current_file_counter = 0
         self.next_action = None
         self.derivative_folder = None
@@ -480,6 +481,11 @@ class FileMenu(PersistentMenu):
         self.save_menu.setTitle("&Mask")
         self.addMenu(self.save_menu)
 
+    def update_processed_file_list(self, rce, rce_max, tto_rce_max):
+        self.processed_file_list.append((rce, rce_max, tto_rce_max))
+
+    def get_current_processed_file(self):
+        return self.processed_file_list[self.current_file_counter]
 
 class TopMenu(QMenuBar):
     visible = True

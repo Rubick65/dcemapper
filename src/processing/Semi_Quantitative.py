@@ -1,5 +1,4 @@
 import numpy as np
-from matplotlib import pyplot as plt
 
 from src.io.nifti_io import load_nifti
 from src.utils.utils import create_general_preprocess_output, save_output_nifti, normalize_img
@@ -28,7 +27,10 @@ def semi_quantitative(data, img, folders: tuple, semi_quantitative_data: tuple =
 
         tto_rce_max = get_ttp_rce_max_value(rce, frame_period)
 
-        retry = create_general_preprocess_output(data, rce, "Processed")
+        try:
+            retry = create_general_preprocess_output(data, rce, "Processed")
+        except Exception:
+            retry = False
 
     rce_save = save_output_nifti(rce, img.affine, output_folder, nifti_file_path, "rce_proc")
 
@@ -66,9 +68,7 @@ def get_ttp_rce_max_value(rce, frame_period):
 
     ttp_norm = normalize_img(tto_rce_max)
 
-    norm_img = (ttp_norm * 255).astype(np.uint8)
-
-    return norm_img
+    return ttp_norm
 
 
 def calculate_reference_value(data, frame_ini_contrast):
@@ -82,7 +82,7 @@ def calculate_rce(data, reference_value):
     data = data.astype(np.float32)
     s0 = reference_value.astype(np.float32)
 
-    mask = s0 > (np.mean(s0) * 0.3)
+    mask = s0 > (np.mean(s0) * 0.8)
 
     s0_expanded = s0[:, :, :, np.newaxis]
     mask_expanded = mask[:, :, :, np.newaxis]
