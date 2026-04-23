@@ -184,7 +184,7 @@ class MainWindow(QMainWindow):
         if "preproc" in file_name:
             self.toolbar.roi_menu.activate_roi_selection()
 
-    def check_for_processed_file(self,file):
+    def check_for_processed_file(self, file):
         file_name = Path(file).name
         if "proc" in file_name:
             self.toolbar.viewer_menu.activate_viewer_selection()
@@ -224,7 +224,7 @@ class MainWindow(QMainWindow):
         self.canvas.update_cmap("jet")
 
         self.toolbar.viewer_menu.activate_viewer_selection()
-        self.set_new_data(self.rce) #By default, rce
+        self.set_new_data(self.rce)  # By default, rce
 
     def set_new_data(self, data):
 
@@ -249,7 +249,6 @@ class MainWindow(QMainWindow):
         if self.current_ndim == 3:
             self.data = self.data[:, :, :, np.newaxis]
 
-
     def update_widgets(self, roi_slices_t0):
 
         if self.canvas:
@@ -270,7 +269,6 @@ class MainWindow(QMainWindow):
         for key in self.time_keys:
             if key in self._shortcuts:
                 self._shortcuts[key].setEnabled(False)
-
 
     def active_time_keys(self):
         for key in self.time_keys:
@@ -762,10 +760,13 @@ class MainWindow(QMainWindow):
         match selected_view:
             case "r":
                 self.set_new_data(self.rce)
+                self.toolbar.roi_menu.activate_roi_selection()
             case "m":
                 self.set_new_data(self.rce_max)
+                self.toolbar.roi_menu.deactivate_roi_selection()
             case "t":
                 self.set_new_data(self.tto_rce_max)  # Cuando lo tengamos, cambiar
+                self.toolbar.roi_menu.deactivate_roi_selection()
 
     def clear_current_roi(self):
         if self.current_roi is not None:

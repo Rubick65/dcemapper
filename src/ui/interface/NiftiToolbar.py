@@ -59,9 +59,19 @@ class RoiMenu(QMenu):
         self.already_processed_roi = True
         self.update()
 
+    def deactivate_roi_selection(self):
+        actions = self.group.actions()
+
+        if not actions:
+            actions = self.actions()
+
+        for action in actions:
+            action.setEnabled(False)
+
+        self.update()
+
 
 class ViewerMenu(QMenu):
-
     deactive_viewer_selection_signal = pyqtSignal()
     selected_text_signal = pyqtSignal(str)
 
@@ -107,9 +117,9 @@ class ViewerMenu(QMenu):
 
         self.selected_text_signal.emit(selected_action.text()[0: 1].lower())
 
+
 class NiftiToolbar(NavigationToolbar):
     previous_roi_signal = pyqtSignal()
-
 
     def __init__(self, canvas: NiftiCanvas, parent):
         super().__init__(canvas, parent)
@@ -197,5 +207,3 @@ class NiftiToolbar(NavigationToolbar):
         self.viewer_button.setIcon(icon)
 
         self.addWidget(self.viewer_button)
-
-
