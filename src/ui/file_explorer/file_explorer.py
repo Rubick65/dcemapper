@@ -483,7 +483,6 @@ class FileMenu(PersistentMenu):
     def change_current_file(self, new_file):
         if self.file_list:
             self.file_list[self.current_file_counter] = new_file
-            print(self.file_list)
 
     def create_save_menu(self):
         self.save_menu = MaskMenu(self)

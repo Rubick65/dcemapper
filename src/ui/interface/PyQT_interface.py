@@ -569,7 +569,6 @@ class MainWindow(QMainWindow):
         self.slider_t_input.setEnabled(True)
         self.slider_fps.setEnabled(True)
         self.slider_fps_input.setEnabled(True)
-        print(self.slider_t.value())
 
     def slider_label(self, label_text, min_range, max_range, init_val, slider_callback, text_callback,
                      stop_movie=False):
@@ -1110,15 +1109,15 @@ class MainWindow(QMainWindow):
                 self.vertices = None
 
     def rectangle_mode(self):
-        if self.toolbar.roi_menu.already_processed:
+        if self.toolbar.roi_menu.already_processed_roi:
             self.toolbar.roi_menu.activate_roi_by_prefix("r")
 
     def elliptical_mode(self):
-        if self.toolbar.roi_menu.already_processed:
+        if self.toolbar.roi_menu.already_processed_roi:
             self.toolbar.roi_menu.activate_roi_by_prefix("e")
 
     def polygon_mode(self):
-        if self.toolbar.roi_menu.already_processed:
+        if self.toolbar.roi_menu.already_processed_roi:
             self.toolbar.roi_menu.activate_roi_by_prefix("p")
 
     def clicked(self, event):
