@@ -21,7 +21,7 @@ from src.ui.Images_Class.NiftiCanvas import NiftiCanvas
 from src.ui.file_explorer.file_explorer import TopMenu
 from src.ui.interface.NiftiToolbar import NiftiToolbar
 from src.utils.utils import create_output_folder, get_correct_subject, normalize_img, save_output_nifti, is_valid_mask
-from src.visualization.Alert_Message_Visualization import AlertDialog
+from src.visualization.Alert_Message_Visualization import init_alert_visual
 
 # -----------------CONSTANTS-----------------
 window_minSize = QSize(1125, 500)
@@ -147,18 +147,12 @@ class MainWindow(QMainWindow):
 
         try:
             if self.full_mask is None or np.all(self.full_mask == 1.0):
-                self.create_alert_dialog("Mask not found", "Mask was not found, please create one.")
+                init_alert_visual("Mask not found", "Mask was not found, please create one.")
             else:
                 output_folder = self.top_bar.file_menu.file_selector(True)
                 save_output_nifti(self.full_mask, self.img.affine, str(output_folder[0]), self.nifty_path, "mask")
         except ValueError:
             pass
-
-    def create_alert_dialog(self, title, message):
-        self.alert_dialog = AlertDialog(title, message)
-
-        self.alert_dialog.show()
-        self.alert_dialog.raise_()
 
     def set_various_files(self, nifty_data):
         nifty_path, derivative_folder = nifty_data
@@ -205,6 +199,7 @@ class MainWindow(QMainWindow):
             data = gibbs_remove([data])
 
         self.set_new_data(data)
+        self.top_bar.file_menu.save_menu.activate_mask_actions()
 
     def processing(self, selected_process_option):
         selected_option = selected_process_option[1:2].lower()
@@ -460,7 +455,6 @@ class MainWindow(QMainWindow):
         self.setFocus()
         self.init_shortcuts()
         self.update()
-        self.top_bar.file_menu.save_menu.activate_mask_actions()
 
     def stop_movie_mode(self):
         if self.movie_timer.isActive():

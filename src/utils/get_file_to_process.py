@@ -1,6 +1,10 @@
+import shutil
 from pathlib import Path
 
+from PyQt6.QtWidgets import QDialog
+
 from src.utils.utils import is_folder_and_not_occult, is_nii
+from src.visualization.Alert_Message_Visualization import init_alert_visual
 
 
 def get_files_to_process(main_path):
@@ -52,8 +56,15 @@ def get_files_to_process(main_path):
         files_to_process_name = list(files_to_process.keys())
         # If folder name exists in the files to process
         if folder_name in files_to_process_name:
-            # Delete those files to process
-            del files_to_process[folder_name]
+            response_code = init_alert_visual("Already processed",
+                                              f"<p>File <b>{folder_name}</b> already processed, "
+                                              f"do you want to delete it?</p>",
+                                              buttons=True)
+            if response_code == QDialog.DialogCode.Accepted:
+                delete_files(derivative_path)
+            else:
+                # Delete those files to process
+                del files_to_process[folder_name]
 
     return files_to_process, derivatives_folder
 
@@ -65,3 +76,7 @@ def get_correct_file(sub):
         if "_DCE_acq" in file.name:
             return file
     return None
+
+
+def delete_files(folder_path: Path):
+    shutil.rmtree(folder_path)

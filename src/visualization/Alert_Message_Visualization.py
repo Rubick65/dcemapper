@@ -42,13 +42,14 @@ class AlertDialog(QDialog):
         buttons = QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
         button_box = QDialogButtonBox(buttons)
 
-        button_box.accepted.connect(self.accepted)
+        button_box.accepted.connect(self.accept)
         button_box.rejected.connect(self.reject)
 
         return button_box
 
 
-def init_alert_visual(title, message):
-    alert_visual = AlertDialog(title, message)
-    alert_visual.show()
-    alert_visual.raise_()
+def init_alert_visual(title, message, buttons: bool = False):
+    alert_visual = AlertDialog(title, message, buttons)
+    response_code = alert_visual.exec()
+
+    return response_code
