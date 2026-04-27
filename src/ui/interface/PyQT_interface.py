@@ -262,13 +262,18 @@ class MainWindow(QMainWindow):
         if self.canvas:
             self.canvas.update_image(self.data)
 
-    def deactivate_time_keys(self):
-        for key in self.time_keys:
+    def deactivate_keys(self, key_list):
+        for key in key_list:
+            if isinstance(key, str):
+                key = QShortcut(QKeySequence(key), self)
             if key in self._shortcuts:
                 self._shortcuts[key].setEnabled(False)
 
-    def active_time_keys(self):
-        for key in self.time_keys:
+    def active_keys(self, key_list):
+        for key in key_list:
+            if isinstance(key, str):
+                key = QShortcut(QKeySequence(key), self)
+
             if key in self._shortcuts:
                 self._shortcuts[key].setEnabled(True)
 
@@ -276,10 +281,10 @@ class MainWindow(QMainWindow):
 
         if self.current_ndim == 3:
             self.deactivate_sliders()
-            self.deactivate_time_keys()
+            self.deactivate_keys(self.time_keys)
         else:
             self.active_sliders()
-            self.active_time_keys()
+            self.active_keys(self.time_keys)
 
         # If is the first time that we create the selector
         if not self.image_widgets or len(self.image_widgets) != len(
@@ -510,11 +515,11 @@ class MainWindow(QMainWindow):
             self.slider_t.setMaximum(num_t_points - 1)
             self.slider_t_input.setValidator(QIntValidator(0, num_t_points, self))
             self.active_sliders()
-            self.active_time_keys()
+            self.active_keys(self.time_keys)
 
         else:
             self.deactivate_sliders()
-            self.deactivate_time_keys()
+            self.deactivate_keys(self.time_keys)
 
         container = QWidget()
         self.selector_layout = QVBoxLayout(container)
@@ -759,14 +764,18 @@ class MainWindow(QMainWindow):
             case "r":
                 self.set_new_data(rce)
                 self.toolbar.roi_menu.activate_roi_selection()
+                self.active_keys("Ctrl+Z")
             case "m":
                 self.set_new_data(rce_max)
-                self.toolbar.roi_menu.deactivate_roi_selection()
-                self.clear_current_roi()
+                self.roi_deactivation(["Ctrl+Z"])
             case "t":
                 self.set_new_data(tto_rce_max)  # Cuando lo tengamos, cambiar
-                self.toolbar.roi_menu.deactivate_roi_selection()
-                self.clear_current_roi()
+                self.roi_deactivation(["Ctrl+Z"])
+
+    def roi_deactivation(self, deactivation_key):
+        self.toolbar.roi_menu.deactivate_roi_selection()
+        self.clear_current_roi()
+        self.deactivate_keys(deactivation_key)
 
     def clear_current_roi(self):
         if self.current_roi is not None:
