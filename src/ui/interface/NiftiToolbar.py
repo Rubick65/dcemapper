@@ -70,6 +70,7 @@ class RoiMenu(QMenu):
 
         self.update()
 
+class ViewerMenu(QMenu):
 
     deactivate_viewer_selection_signal = pyqtSignal()
     selected_text_signal = pyqtSignal(str)
@@ -115,7 +116,6 @@ class RoiMenu(QMenu):
                 action.setChecked(False)
 
         self.selected_text_signal.emit(selected_action.text()[0: 1].lower())
-
 
 class NiftiToolbar(NavigationToolbar):
     previous_roi_signal = pyqtSignal()
