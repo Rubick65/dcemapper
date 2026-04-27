@@ -21,7 +21,7 @@ from src.ui.Images_Class.NiftiCanvas import NiftiCanvas
 from src.ui.file_explorer.file_explorer import TopMenu
 from src.ui.interface.NiftiToolbar import NiftiToolbar
 from src.utils.utils import create_output_folder, get_correct_subject, normalize_img, save_output_nifti, is_valid_mask
-from src.visualization.Alert_Message_Visualization import AlertDialog
+from src.visualization.Alert_Message_Visualization import init_alert_visual
 
 # -----------------CONSTANTS-----------------
 window_minSize = QSize(1125, 500)
@@ -147,18 +147,12 @@ class MainWindow(QMainWindow):
 
         try:
             if self.full_mask is None or np.all(self.full_mask == 1.0):
-                self.create_alert_dialog("Mask not found", "Mask was not found, please create one.")
+                init_alert_visual("Mask not found", "Mask was not found, please create one.")
             else:
                 output_folder = self.top_bar.file_menu.file_selector(True)
                 save_output_nifti(self.full_mask, self.img.affine, str(output_folder[0]), self.nifty_path, "mask")
         except ValueError:
             pass
-
-    def create_alert_dialog(self, title, message):
-        self.alert_dialog = AlertDialog(title, message)
-
-        self.alert_dialog.show()
-        self.alert_dialog.raise_()
 
     def set_various_files(self, nifty_data):
         nifty_path, derivative_folder = nifty_data
@@ -201,7 +195,7 @@ class MainWindow(QMainWindow):
 
     def check_for_processed_file(self, file):
         file_name = Path(file).name
-        if "proc" in file_name:
+        if "process" in file_name:
             self.toolbar.viewer_menu.activate_viewer_selection()
             self.canvas.update_cmap("jet")
 
@@ -223,6 +217,7 @@ class MainWindow(QMainWindow):
             data = gibbs_remove([data])
 
         self.set_new_data(data)
+        self.top_bar.file_menu.save_menu.activate_mask_actions()
 
     def processing(self, selected_process_option):
         selected_option = selected_process_option[1:2].lower()
@@ -239,6 +234,7 @@ class MainWindow(QMainWindow):
 
         self.toolbar.viewer_menu.activate_viewer_selection()
         self.set_new_data(rce)  # By default, rce
+        self.clear_current_roi()
 
     def set_new_data(self, data):
 
@@ -279,13 +275,18 @@ class MainWindow(QMainWindow):
         if self.canvas:
             self.canvas.update_image(self.data,self.canvas.current_t)
 
-    def deactivate_time_keys(self):
-        for key in self.time_keys:
+    def deactivate_keys(self, key_list):
+        for key in key_list:
+            if isinstance(key, str):
+                key = QShortcut(QKeySequence(key), self)
             if key in self._shortcuts:
                 self._shortcuts[key].setEnabled(False)
 
-    def active_time_keys(self):
-        for key in self.time_keys:
+    def active_keys(self, key_list):
+        for key in key_list:
+            if isinstance(key, str):
+                key = QShortcut(QKeySequence(key), self)
+
             if key in self._shortcuts:
                 self._shortcuts[key].setEnabled(True)
 
@@ -293,10 +294,10 @@ class MainWindow(QMainWindow):
 
         if self.current_ndim == 3:
             self.deactivate_sliders()
-            self.deactivate_time_keys()
+            self.deactivate_keys(self.time_keys)
         else:
             self.active_sliders()
-            self.active_time_keys()
+            self.active_keys(self.time_keys)
 
         # If is the first time that we create the selector
         if not self.image_widgets or len(self.image_widgets) != len(
@@ -526,11 +527,11 @@ class MainWindow(QMainWindow):
             self.slider_t.setMaximum(num_t_points - 1)
             self.slider_t_input.setValidator(QIntValidator(0, num_t_points, self))
             self.active_sliders()
-            self.active_time_keys()
+            self.active_keys(self.time_keys)
 
         else:
             self.deactivate_sliders()
-            self.deactivate_time_keys()
+            self.deactivate_keys(self.time_keys)
 
         container = QWidget()
         self.selector_layout = QVBoxLayout(container)
@@ -714,7 +715,7 @@ class MainWindow(QMainWindow):
         container.setLayout(layout)
 
         self.toolbar.roi_menu.selected_text_signal.connect(self.change_roi_selector)
-        self.toolbar.roi_menu.deactivate_roi_selection_signal.connect(self.deactivate_roi_selection)
+        self.toolbar.roi_menu.deactivate_roi_selection_signal.connect(self.clear_current_roi)
         self.toolbar.previous_roi_signal.connect(self.go_to_previous_roi)
         self.toolbar.viewer_menu.selected_text_signal.connect(self.change_viewer_selector)
         self.toolbar.viewer_menu.deactivate_viewer_selection_signal.connect(self.deactivate_viewer_selection)
@@ -775,14 +776,20 @@ class MainWindow(QMainWindow):
             case "r":
                 self.set_new_data(rce)
                 self.toolbar.roi_menu.activate_roi_selection()
+                self.active_keys(["Ctrl+Z"])
             case "m":
                 self.canvas.current_t = 0
                 self.set_new_data(rce_max)
-                self.toolbar.roi_menu.deactivate_roi_selection()
+                self.roi_deactivation(["Ctrl+Z"])
             case "t":
                 self.canvas.current_t = 0
                 self.set_new_data(tto_rce_max)  # Cuando lo tengamos, cambiar
-                self.toolbar.roi_menu.deactivate_roi_selection()
+                self.roi_deactivation(["Ctrl+Z"])
+
+    def roi_deactivation(self, deactivation_key):
+        self.toolbar.roi_menu.deactivate_roi_selection()
+        self.clear_current_roi()
+        self.deactivate_keys(deactivation_key)
 
     def clear_current_roi(self):
         if self.current_roi is not None:
