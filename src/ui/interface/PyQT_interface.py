@@ -33,7 +33,6 @@ main_image_minSize = QSize(300, 400)
 
 name_current_dir = os.path.dirname(os.path.abspath(__file__))
 
-
 class MainWindow(QMainWindow):
 
     def __init__(self, nifty_path=None):
@@ -120,6 +119,7 @@ class MainWindow(QMainWindow):
     def general_signals_connections(self):
         self.top_bar.file_menu.files_signal.connect(self.set_various_files)
         self.top_bar.file_menu.one_file_signal.connect(self.set_various_files)
+        self.top_bar.file_menu.proc_file_signal.connect(self.set_proc_files)
         self.top_bar.preprocessing_menu.preprocess_signal.connect(self.preprocessing)
         self.top_bar.process_menu.process_signal.connect(self.processing)
         self.top_bar.file_menu.save_menu.check_for_roi_changes_signal.connect(self.check_for_creating_roi)
@@ -162,19 +162,37 @@ class MainWindow(QMainWindow):
 
     def set_various_files(self, nifty_data):
         nifty_path, derivative_folder = nifty_data
+
         if isinstance(nifty_path, tuple):
             self.current_subject = nifty_path[0]  # Name of the subject
             nifty_path = nifty_path[1]
+
         else:
             # If it is a single file, we extract the subject name from the file structure
             self.current_subject = get_correct_subject(Path(nifty_path))
 
+        if "proc" in nifty_path:
+            nifty_path = nifty_path.replace("tto_rce_max_proc", "rce_proc").replace("rce_max_proc", "rce_proc")
+
+        self.derivative_folder = derivative_folder
+        self.set_nifti(nifty_path)
+        self.check_for_preprocessed_file(nifty_path)
+        self.check_for_processed_file(nifty_path)
+
+    def set_proc_files(self, nifty_data):
+        nifty_path, derivative_folder = nifty_data
+
+        self.rce = nifty_path.replace("tto_rce_max_proc", "rce_proc").replace("rce_max_proc", "rce_proc")
+        self.rce_max = self.rce.replace("rce_proc", "rce_max_proc")
+        self.tto_rce_max = self.rce.replace("rce_proc", "tto_rce_max_proc")
+
+        self.current_subject = get_correct_subject(Path(self.rce))
         self.derivative_folder = derivative_folder
 
         self.set_nifti(nifty_path)
 
-        self.check_for_preprocessed_file(nifty_path)
-        self.check_for_processed_file(nifty_path)
+        self.check_for_preprocessed_file(self.rce)
+        self.check_for_processed_file(self.rce)
 
     def check_for_preprocessed_file(self, file):
         file_name = Path(file).name
@@ -259,7 +277,7 @@ class MainWindow(QMainWindow):
                 self.main_splitter.insertWidget(0, self.left_container)
 
         if self.canvas:
-            self.canvas.update_image(self.data)
+            self.canvas.update_image(self.data,self.canvas.current_t)
 
     def deactivate_time_keys(self):
         for key in self.time_keys:
@@ -396,8 +414,6 @@ class MainWindow(QMainWindow):
             self.canvas.deleteLater()
             self.canvas = None
 
-        if self.slider_t:
-            self.slider_t.setValue(0)
 
         if self.graphic:
             self.graphic.close_graph()
@@ -418,6 +434,7 @@ class MainWindow(QMainWindow):
 
         self.nifty_path = nifty_path
         self.data, img = load_nifti(self.nifty_path)
+
         self.current_ndim = int(self.data.ndim)
         self.img = img
         self.original_data = self.data.copy()
@@ -700,7 +717,7 @@ class MainWindow(QMainWindow):
         self.toolbar.roi_menu.deactivate_roi_selection_signal.connect(self.deactivate_roi_selection)
         self.toolbar.previous_roi_signal.connect(self.go_to_previous_roi)
         self.toolbar.viewer_menu.selected_text_signal.connect(self.change_viewer_selector)
-        self.toolbar.viewer_menu.deactive_viewer_selection_signal.connect(self.deactivate_viewer_selection)
+        self.toolbar.viewer_menu.deactivate_viewer_selection_signal.connect(self.deactivate_viewer_selection)
         container.installEventFilter(self)
 
         return container
@@ -759,9 +776,11 @@ class MainWindow(QMainWindow):
                 self.set_new_data(rce)
                 self.toolbar.roi_menu.activate_roi_selection()
             case "m":
+                self.canvas.current_t = 0
                 self.set_new_data(rce_max)
                 self.toolbar.roi_menu.deactivate_roi_selection()
             case "t":
+                self.canvas.current_t = 0
                 self.set_new_data(tto_rce_max)  # Cuando lo tengamos, cambiar
                 self.toolbar.roi_menu.deactivate_roi_selection()
 
@@ -825,7 +844,7 @@ class MainWindow(QMainWindow):
         self.clear_current_roi()
 
     def deactivate_viewer_selection(self):
-        print("a")
+        pass
 
     def go_to_previous_roi(self):
         z_index = self.canvas.current_z
@@ -1088,15 +1107,15 @@ class MainWindow(QMainWindow):
                 self.vertices = None
 
     def rectangle_mode(self):
-        if self.toolbar.roi_menu.already_processed:
+        if self.toolbar.roi_menu.already_processed_roi:
             self.toolbar.roi_menu.activate_roi_by_prefix("r")
 
     def elliptical_mode(self):
-        if self.toolbar.roi_menu.already_processed:
+        if self.toolbar.roi_menu.already_processed_roi:
             self.toolbar.roi_menu.activate_roi_by_prefix("e")
 
     def polygon_mode(self):
-        if self.toolbar.roi_menu.already_processed:
+        if self.toolbar.roi_menu.already_processed_roi:
             self.toolbar.roi_menu.activate_roi_by_prefix("p")
 
     def clicked(self, event):

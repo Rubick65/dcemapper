@@ -175,7 +175,7 @@ class NiftiCanvas(FigureCanvas):
     def set_pixel_observer(self, callback_func):
         self.pixel_callback = callback_func
 
-    def update_image(self, new_data):
+    def update_image(self, new_data, current_t = 0):
         self.data = new_data
         self.max_z = self.data.shape[2] - 1
         self.has_time = self.data.ndim == 4
@@ -185,7 +185,7 @@ class NiftiCanvas(FigureCanvas):
         else:
             self.max_t = 0
 
-        self.current_t = 0
+        self.current_t = current_t
 
         v_min = np.nanpercentile(new_data, 2)
         v_max = np.nanpercentile(new_data, 98)

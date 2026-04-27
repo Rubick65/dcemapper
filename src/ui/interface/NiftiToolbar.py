@@ -71,8 +71,7 @@ class RoiMenu(QMenu):
         self.update()
 
 
-class ViewerMenu(QMenu):
-    deactive_viewer_selection_signal = pyqtSignal()
+    deactivate_viewer_selection_signal = pyqtSignal()
     selected_text_signal = pyqtSignal(str)
 
     def __init__(self):
@@ -108,7 +107,7 @@ class ViewerMenu(QMenu):
 
     def handle_exclusivity(self, selected_action: QAction):
         if not selected_action.isChecked():
-            self.deactive_viewer_selection_signal.emit()
+            self.deactivate_viewer_selection_signal.emit()
             return
 
         for action in self.group.actions():

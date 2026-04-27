@@ -306,6 +306,8 @@ class FileMenu(PersistentMenu):
 
     one_file_signal = pyqtSignal(tuple)
 
+    proc_file_signal = pyqtSignal(tuple)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.save_menu = None
@@ -430,6 +432,14 @@ class FileMenu(PersistentMenu):
 
                     self.get_list_of_files_to_process(files_to_process)
 
+                case "pr":
+                    f = self.file_selector(directory=False)
+
+                    derivative_folder = str(Path(f[0]).parent)
+                    self.proc_file_signal.emit((f[0], derivative_folder))
+                    self.next_action.setEnabled(False)
+                    self.previous_action.setEnabled(False)
+
         except ValueError:
             pass
 
@@ -474,7 +484,6 @@ class FileMenu(PersistentMenu):
     def change_current_file(self, new_file):
         if self.file_list:
             self.file_list[self.current_file_counter] = new_file
-            print(self.file_list)
 
     def create_save_menu(self):
         self.save_menu = MaskMenu(self)

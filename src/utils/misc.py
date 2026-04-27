@@ -15,6 +15,7 @@ processing_types_dict = {
 file_options_dict = {
     "&Open BIDS": "Opens BIDS structure and search for correct file",
     "&Open NIfTI File": "Opens NIfTI files",
+    "&Open Process File": "Opens already process NIfTI files",
     "&Open Bruker File": "Converts from Bruker to NIfTI format",
 }
 denoise_filters = [
