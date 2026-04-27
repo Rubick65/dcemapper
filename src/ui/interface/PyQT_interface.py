@@ -460,6 +460,7 @@ class MainWindow(QMainWindow):
         self.setFocus()
         self.init_shortcuts()
         self.update()
+        self.top_bar.file_menu.save_menu.activate_mask_actions()
 
     def stop_movie_mode(self):
         if self.movie_timer.isActive():
@@ -764,7 +765,7 @@ class MainWindow(QMainWindow):
             case "r":
                 self.set_new_data(rce)
                 self.toolbar.roi_menu.activate_roi_selection()
-                self.active_keys("Ctrl+Z")
+                self.active_keys(["Ctrl+Z"])
             case "m":
                 self.set_new_data(rce_max)
                 self.roi_deactivation(["Ctrl+Z"])

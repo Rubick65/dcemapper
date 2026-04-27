@@ -279,6 +279,7 @@ class MaskMenu(PersistentMenu):
         self.save_action = QAction("&Save current Mask", self)
         self.open_mask_action = QAction("&Open mask", self)
         self.group = QActionGroup(self)
+        self.group.setEnabled(False)
         self.initUi()
 
     def initUi(self):
@@ -298,6 +299,10 @@ class MaskMenu(PersistentMenu):
         self.open_mask_action.triggered.connect(self.open_selected_mask_signal.emit)
         self.group.addAction(self.open_mask_action)
         self.addAction(self.open_mask_action)
+
+    def activate_mask_actions(self):
+        self.group.setEnabled(True)
+
 
 
 class FileMenu(PersistentMenu):
