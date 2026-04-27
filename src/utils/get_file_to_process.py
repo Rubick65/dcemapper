@@ -1,6 +1,11 @@
+import shutil
 from pathlib import Path
 
+from PyQt6.QtWidgets import QDialog
+
 from src.utils.utils import is_folder_and_not_occult, is_nii
+from src.visualization.Alert_Message_Visualization import init_alert_visual
+
 
 def get_files_to_process(main_path):
     # Paths to source data and derivatives
@@ -36,7 +41,7 @@ def get_files_to_process(main_path):
     if not files_to_process:
         return {}
 
-    # If derivatives folder dont exists
+    # If derivatives folder don´t exists
     if not derivatives_folder.exists():
         # Create derivatives folder
         derivatives_folder.mkdir()
@@ -47,10 +52,19 @@ def get_files_to_process(main_path):
     for derivative_path in filter(is_folder_and_not_occult, derivatives_folder.iterdir()):
         # Gets the folder name
         folder_name = derivative_path.name
+
+        files_to_process_name = list(files_to_process.keys())
         # If folder name exists in the files to process
-        if folder_name in files_to_process:
-            # Delete those files to process
-            del files_to_process[folder_name]
+        if folder_name in files_to_process_name:
+            response_code = init_alert_visual("Already processed",
+                                              f"<p>File <b>{folder_name}</b> already processed, "
+                                              f"do you want to delete it?</p>",
+                                              buttons=True)
+            if response_code == QDialog.DialogCode.Accepted:
+                delete_files(derivative_path)
+            else:
+                # Delete those files to process
+                del files_to_process[folder_name]
 
     return files_to_process, derivatives_folder
 
@@ -63,3 +77,6 @@ def get_correct_file(sub):
             return file
     return None
 
+
+def delete_files(folder_path: Path):
+    shutil.rmtree(folder_path)
