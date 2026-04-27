@@ -183,7 +183,7 @@ class MainWindow(QMainWindow):
 
     def check_for_processed_file(self, file):
         file_name = Path(file).name
-        if "proc" in file_name:
+        if "process" in file_name:
             self.toolbar.viewer_menu.activate_viewer_selection()
             self.canvas.update_cmap("jet")
 
@@ -221,6 +221,7 @@ class MainWindow(QMainWindow):
 
         self.toolbar.viewer_menu.activate_viewer_selection()
         self.set_new_data(rce)  # By default, rce
+        self.clear_current_roi()
 
     def set_new_data(self, data):
 
@@ -697,7 +698,7 @@ class MainWindow(QMainWindow):
         container.setLayout(layout)
 
         self.toolbar.roi_menu.selected_text_signal.connect(self.change_roi_selector)
-        self.toolbar.roi_menu.deactivate_roi_selection_signal.connect(self.deactivate_roi_selection)
+        self.toolbar.roi_menu.deactivate_roi_selection_signal.connect(self.clear_current_roi)
         self.toolbar.previous_roi_signal.connect(self.go_to_previous_roi)
         self.toolbar.viewer_menu.selected_text_signal.connect(self.change_viewer_selector)
         self.toolbar.viewer_menu.deactive_viewer_selection_signal.connect(self.deactivate_viewer_selection)
@@ -761,9 +762,11 @@ class MainWindow(QMainWindow):
             case "m":
                 self.set_new_data(rce_max)
                 self.toolbar.roi_menu.deactivate_roi_selection()
+                self.clear_current_roi()
             case "t":
                 self.set_new_data(tto_rce_max)  # Cuando lo tengamos, cambiar
                 self.toolbar.roi_menu.deactivate_roi_selection()
+                self.clear_current_roi()
 
     def clear_current_roi(self):
         if self.current_roi is not None:
@@ -1088,15 +1091,15 @@ class MainWindow(QMainWindow):
                 self.vertices = None
 
     def rectangle_mode(self):
-        if self.toolbar.roi_menu.already_processed:
+        if self.toolbar.roi_menu.already_processed_roi:
             self.toolbar.roi_menu.activate_roi_by_prefix("r")
 
     def elliptical_mode(self):
-        if self.toolbar.roi_menu.already_processed:
+        if self.toolbar.roi_menu.already_processed_roi:
             self.toolbar.roi_menu.activate_roi_by_prefix("e")
 
     def polygon_mode(self):
-        if self.toolbar.roi_menu.already_processed:
+        if self.toolbar.roi_menu.already_processed_roi:
             self.toolbar.roi_menu.activate_roi_by_prefix("p")
 
     def clicked(self, event):

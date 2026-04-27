@@ -32,11 +32,11 @@ def semi_quantitative(data, img, folders: tuple, semi_quantitative_data: tuple =
         except Exception:
             retry = False
 
-    rce_save = save_output_nifti(rce, img.affine, output_folder, nifti_file_path, "rce_proc")
+    rce_save = save_output_nifti(rce, img.affine, output_folder, nifti_file_path, "rce_process")
 
-    rce_max_save = save_output_nifti(rce_max, img.affine, output_folder, nifti_file_path, "rce_max_proc")
+    rce_max_save = save_output_nifti(rce_max, img.affine, output_folder, nifti_file_path, "rce_max_process")
 
-    tto_rce_max_save = save_output_nifti(tto_rce_max, img.affine, output_folder, nifti_file_path, "tto_rce_max_proc")
+    tto_rce_max_save = save_output_nifti(tto_rce_max, img.affine, output_folder, nifti_file_path, "tto_rce_max_process")
 
     return rce_save, rce_max_save, tto_rce_max_save
 

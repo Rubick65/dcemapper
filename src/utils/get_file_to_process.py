@@ -2,6 +2,7 @@ from pathlib import Path
 
 from src.utils.utils import is_folder_and_not_occult, is_nii
 
+
 def get_files_to_process(main_path):
     # Paths to source data and derivatives
     root_path = Path(main_path)
@@ -36,7 +37,7 @@ def get_files_to_process(main_path):
     if not files_to_process:
         return {}
 
-    # If derivatives folder dont exists
+    # If derivatives folder don´t exists
     if not derivatives_folder.exists():
         # Create derivatives folder
         derivatives_folder.mkdir()
@@ -47,8 +48,10 @@ def get_files_to_process(main_path):
     for derivative_path in filter(is_folder_and_not_occult, derivatives_folder.iterdir()):
         # Gets the folder name
         folder_name = derivative_path.name
+
+        files_to_process_name = list(files_to_process.keys())
         # If folder name exists in the files to process
-        if folder_name in files_to_process:
+        if folder_name in files_to_process_name:
             # Delete those files to process
             del files_to_process[folder_name]
 
@@ -62,4 +65,3 @@ def get_correct_file(sub):
         if "_DCE_acq" in file.name:
             return file
     return None
-
