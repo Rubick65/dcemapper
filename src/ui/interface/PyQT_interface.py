@@ -48,7 +48,7 @@ class MainWindow(QMainWindow):
         self.resize(width, height)
         self.nifty_path = nifty_path
         self.movie_speed = 30  # miliseconds fps
-        self._shortcuts = []
+        self._shortcuts = {}
         self.graphic = None
         self.canvas = None
         self.toolbar = None
@@ -90,6 +90,7 @@ class MainWindow(QMainWindow):
         self.radius = None
         self.current_ndim = None
         self.time_keys = [Qt.Key.Key_Up, Qt.Key.Key_Down, Qt.Key.Key_Space]
+        self.restart_roi_keys = [(Qt.KeyboardModifier.ControlModifier | Qt.Key.Key_Z)]
         self.roi_selector_list = []
         self.selected_roi = ""
         self.top_bar = TopMenu()
@@ -277,16 +278,12 @@ class MainWindow(QMainWindow):
 
     def deactivate_keys(self, key_list):
         for key in key_list:
-            if isinstance(key, str):
-                key = QShortcut(QKeySequence(key), self)
+
             if key in self._shortcuts:
                 self._shortcuts[key].setEnabled(False)
 
     def active_keys(self, key_list):
         for key in key_list:
-            if isinstance(key, str):
-                key = QShortcut(QKeySequence(key), self)
-
             if key in self._shortcuts:
                 self._shortcuts[key].setEnabled(True)
 
@@ -776,20 +773,20 @@ class MainWindow(QMainWindow):
             case "r":
                 self.set_new_data(rce)
                 self.toolbar.roi_menu.activate_roi_selection()
-                self.active_keys(["Ctrl+Z"])
+                self.active_keys(self.restart_roi_keys)
             case "m":
                 self.canvas.current_t = 0
                 self.set_new_data(rce_max)
-                self.roi_deactivation(["Ctrl+Z"])
+                self.roi_deactivation()
             case "t":
                 self.canvas.current_t = 0
                 self.set_new_data(tto_rce_max)  # Cuando lo tengamos, cambiar
-                self.roi_deactivation(["Ctrl+Z"])
+                self.roi_deactivation()
 
-    def roi_deactivation(self, deactivation_key):
+    def roi_deactivation(self):
         self.toolbar.roi_menu.deactivate_roi_selection()
         self.clear_current_roi()
-        self.deactivate_keys(deactivation_key)
+        self.deactivate_keys(self.restart_roi_keys)
 
     def clear_current_roi(self):
         if self.current_roi is not None:
@@ -1007,7 +1004,7 @@ class MainWindow(QMainWindow):
             Qt.Key.Key_Z: self.handle_zoom_key,
             Qt.Key.Key_M: self.handle_pan_key,
             Qt.Key.Key_F: self.toggle_fullscreen,
-            "Ctrl+Z": self.go_to_previous_roi,
+            self.restart_roi_keys[0]: self.go_to_previous_roi,
             "Ctrl+R": self.rectangle_mode,
             "Ctrl+E": self.elliptical_mode,
             "Ctrl+P": self.polygon_mode,
@@ -1017,7 +1014,7 @@ class MainWindow(QMainWindow):
         for key, callback in shortcuts.items():
             shortcut = QShortcut(QKeySequence(key), self)
             shortcut.activated.connect(callback)
-            self._shortcuts.append(shortcut)
+            self._shortcuts[key] = shortcut
 
     def cleanup_shortcuts(self):
         """
