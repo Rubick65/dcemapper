@@ -501,6 +501,7 @@ class FileMenu(PersistentMenu):
     def get_current_processed_file(self):
         return self.processed_file_list[self.current_file_counter]
 
+
 class TopMenu(QMenuBar):
     visible = True
 
