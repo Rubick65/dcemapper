@@ -1023,7 +1023,7 @@ class MainWindow(QMainWindow):
         """
         Deleting previous shortcuts to avoid errors
         """
-        for s in self._shortcuts:
+        for key, s in self._shortcuts.items():
             s.setEnabled(False)
             s.deleteLater()
         self._shortcuts.clear()
