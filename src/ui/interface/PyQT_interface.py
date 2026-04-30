@@ -200,6 +200,7 @@ class MainWindow(QMainWindow):
         file_name = Path(file).name
         if "process" in file_name:
             self.toolbar.viewer_menu.activate_viewer_selection()
+            self.toolbar.roi_menu.activate_roi_selection()
             self.canvas.update_cmap("jet")
 
     def preprocessing(self, selected_preprocess_options):
