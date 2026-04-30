@@ -177,17 +177,19 @@ class MainWindow(QMainWindow):
     def set_proc_files(self, nifty_data):
         nifty_path, derivative_folder = nifty_data
 
-        self.rce = nifty_path.replace("tto_rce_max_proc", "rce_proc").replace("rce_max_proc", "rce_proc")
-        self.rce_max = self.rce.replace("rce_proc", "rce_max_proc")
-        self.tto_rce_max = self.rce.replace("rce_proc", "tto_rce_max_proc")
+        rce = nifty_path.replace("tto_rce_max_proc", "rce_proc").replace("rce_max_proc", "rce_proc")
+        rce_max = rce.replace("rce_proc", "rce_max_proc")
+        tto_rce_max = rce.replace("rce_proc", "tto_rce_max_proc")
 
-        self.current_subject = get_correct_subject(Path(self.rce))
+        self.top_bar.file_menu.update_processed_file_list(rce, rce_max, tto_rce_max)
+
+        self.current_subject = get_correct_subject(Path(rce))
         self.derivative_folder = derivative_folder
 
         self.set_nifti(nifty_path)
 
-        self.check_for_preprocessed_file(self.rce)
-        self.check_for_processed_file(self.rce)
+        self.check_for_preprocessed_file(rce)
+        self.check_for_processed_file(rce)
 
     def check_for_preprocessed_file(self, file):
         file_name = Path(file).name
@@ -249,7 +251,6 @@ class MainWindow(QMainWindow):
         self.fix_time_dimension()
 
         roi_slices = get_nifti_slices(self.data)
-        # self.deactivate_time_keys()
         self.update_widgets(roi_slices)
 
         self.top_bar.file_menu.change_current_file(data)
@@ -520,9 +521,6 @@ class MainWindow(QMainWindow):
         main_left_layout.addWidget(slider_fps_group)
 
         if self.current_ndim == 4:
-            num_t_points = self.data.shape[3]
-            self.slider_t.setMaximum(num_t_points - 1)
-            self.slider_t_input.setValidator(QIntValidator(0, num_t_points, self))
             self.active_sliders()
             self.active_keys(self.time_keys)
 
@@ -557,10 +555,15 @@ class MainWindow(QMainWindow):
         self.slider_fps_input.setEnabled(False)
 
     def active_sliders(self):
+        num_t_points = self.data.shape[3]
         self.slider_t.setEnabled(True)
         self.slider_t_input.setEnabled(True)
+        self.slider_t.setMaximum(num_t_points - 1)
+        self.slider_t_input.setValidator(QIntValidator(0, num_t_points, self))
         self.slider_fps.setEnabled(True)
         self.slider_fps_input.setEnabled(True)
+
+
 
     def slider_label(self, label_text, min_range, max_range, init_val, slider_callback, text_callback,
                      stop_movie=False):
@@ -768,7 +771,7 @@ class MainWindow(QMainWindow):
                 self.create_polygon_selector()
 
     def change_viewer_selector(self, selected_view):
-        rce, rce_max, tto_rce_max = self.top_bar.file_menu.get_current_processed_file()
+        rce, rce_max,tto_rce_max,  = self.top_bar.file_menu.get_current_processed_file()
         match selected_view:
             case "r":
                 self.set_new_data(rce)
