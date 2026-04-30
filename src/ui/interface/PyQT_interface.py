@@ -166,8 +166,8 @@ class MainWindow(QMainWindow):
             # If it is a single file, we extract the subject name from the file structure
             self.current_subject = get_correct_subject(Path(nifty_path))
 
-        if "proc" in nifty_path:
-            nifty_path = nifty_path.replace("tto_rce_max_proc", "rce_proc").replace("rce_max_proc", "rce_proc")
+        if "process" in nifty_path:
+            nifty_path = nifty_path.replace("tto_rce_max_process", "rce_process").replace("rce_max_process", "rce_process")
 
         self.derivative_folder = derivative_folder
         self.set_nifti(nifty_path)
@@ -771,7 +771,7 @@ class MainWindow(QMainWindow):
                 self.create_polygon_selector()
 
     def change_viewer_selector(self, selected_view):
-        rce, rce_max,tto_rce_max,  = self.top_bar.file_menu.get_current_processed_file()
+        rce, rce_max,tto_rce_max  = self.top_bar.file_menu.get_current_processed_file()
         match selected_view:
             case "r":
                 self.set_new_data(rce)
