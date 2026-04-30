@@ -200,6 +200,7 @@ class MainWindow(QMainWindow):
         file_name = Path(file).name
         if "process" in file_name:
             self.toolbar.viewer_menu.activate_viewer_selection()
+            self.toolbar.roi_menu.activate_roi_selection()
             self.canvas.update_cmap("jet")
 
     def preprocessing(self, selected_preprocess_options):
@@ -229,8 +230,12 @@ class MainWindow(QMainWindow):
 
         match selected_option:
             case "s":
-                rce, rce_max, tto_rce_max = semi_quantitative(self.data, self.img,
-                                                              (output_folder, self.nifty_path))
+                try:
+                    rce, rce_max, tto_rce_max = semi_quantitative(self.data, self.img,
+                                                                  (output_folder, self.nifty_path))
+                except Exception:
+                    return
+
                 self.top_bar.file_menu.update_processed_file_list(rce, rce_max, tto_rce_max)
 
         self.canvas.update_cmap("jet")
@@ -275,7 +280,7 @@ class MainWindow(QMainWindow):
                 self.main_splitter.insertWidget(0, self.left_container)
 
         if self.canvas:
-            self.canvas.update_image(self.data,self.canvas.current_t)
+            self.canvas.update_image(self.data, self.canvas.current_t)
 
     def deactivate_keys(self, key_list):
         for key in key_list:
@@ -412,7 +417,6 @@ class MainWindow(QMainWindow):
             self.canvas.close_figure()
             self.canvas.deleteLater()
             self.canvas = None
-
 
         if self.graphic:
             self.graphic.close_graph()
@@ -562,8 +566,6 @@ class MainWindow(QMainWindow):
         self.slider_t_input.setValidator(QIntValidator(0, num_t_points, self))
         self.slider_fps.setEnabled(True)
         self.slider_fps_input.setEnabled(True)
-
-
 
     def slider_label(self, label_text, min_range, max_range, init_val, slider_callback, text_callback,
                      stop_movie=False):
