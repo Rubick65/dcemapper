@@ -16,6 +16,8 @@ class NiftiCanvas(FigureCanvas):
         super().__init__(self.fig)
 
         self.data = np_array
+        v_min = np.nanpercentile(self.data, 2)
+        v_max = np.nanpercentile(self.data, 98)
         self.subject_name = subject_name
         self.cmap = cmap  # Color map, by default in black and white colors
         self.current_z = 0  # Current slide
@@ -55,7 +57,7 @@ class NiftiCanvas(FigureCanvas):
             self.current_slice = self.data[:, :, self.current_z].T
 
         # Image of the np array
-        self.img_slice = self.axes.imshow(self.current_slice, cmap=self.cmap)
+        self.img_slice = self.axes.imshow(self.current_slice, cmap=self.cmap, vmin=v_min, vmax=v_max)
 
         self.cmap_text = self.fig.text(0.75, 1.1,
                                        f"Cmap: {self.img_slice.get_cmap().name}",
