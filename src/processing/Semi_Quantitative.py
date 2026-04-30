@@ -27,10 +27,9 @@ def semi_quantitative(data, img, folders: tuple, semi_quantitative_data: tuple =
 
         tto_rce_max = get_ttp_rce_max_value(rce, frame_period)
 
-        try:
-            retry = create_general_preprocess_output(data, rce, "Processed")
-        except Exception:
-            retry = False
+
+        retry = create_general_preprocess_output(data, rce, "Processed")
+
 
     rce_save = save_output_nifti(rce, img.affine, output_folder, nifti_file_path, "rce_process")
 
