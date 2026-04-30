@@ -177,9 +177,9 @@ class MainWindow(QMainWindow):
     def set_proc_files(self, nifty_data):
         nifty_path, derivative_folder = nifty_data
 
-        rce = nifty_path.replace("tto_rce_max_proc", "rce_proc").replace("rce_max_proc", "rce_proc")
-        rce_max = rce.replace("rce_proc", "rce_max_proc")
-        tto_rce_max = rce.replace("rce_proc", "tto_rce_max_proc")
+        rce = nifty_path.replace("tto_rce_max_process", "rce_process").replace("rce_max_process", "rce_process")
+        rce_max = rce.replace("rce_process", "rce_max_process")
+        tto_rce_max = rce.replace("rce_process", "tto_rce_max_process")
 
         self.top_bar.file_menu.update_processed_file_list(rce, rce_max, tto_rce_max)
 
