@@ -46,4 +46,30 @@ Dcemapper is a Python desktop application designed for researchers and clinician
     <img width="300" height="400" alt="image" src="https://github.com/user-attachments/assets/43835a35-b5a3-413b-b04a-2737aaf15804" />
 
   - `↔️ Layout`: Resizable panels to customize the workspace to your needs.
+
+## Authors
+<table border="0">
+  <tr>
+    <td align="center">
+      <a href="https://github.com/Rubick65">
+        <img src="https://github.com/Rubick65.png" width="150" style="border-radius:50%"/>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/Hugodp22">
+        <img src="https://github.com/Hugodp22.png" width="150" style="border-radius:50%"/>
+      </a>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/Rubick65"><b>Rubén Martín Andrade</b></a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/Hugodp22"><b>Hugo de Pablo López</b></a>
+    </td>
+  </tr>
+</table>
+
+
  
