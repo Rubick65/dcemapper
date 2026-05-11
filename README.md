@@ -17,11 +17,11 @@ Dcemapper is a Python desktop application designed for researchers and clinician
     <img width="400" height="400" alt="image" src="https://github.com/user-attachments/assets/d102c01c-9036-461a-b5ff-9c97bc40f8aa" />
 
   - `🧹 Preprocessing`: Applies denoising and gibbs artifacts removal filters.
-  - 
+    
     <img width="692" height="158" alt="image" src="https://github.com/user-attachments/assets/581fc223-31c4-4fa1-a0a0-1fad287132cd" />
 
   - `🎯 ROI tools`: Draw regions of interest, save and reaload mask for reproducible analysis.
-  - 
+    
     <img width="394" height="234" alt="image" src="https://github.com/user-attachments/assets/66b3adf1-4118-4f61-907e-dd8a1d9fba0b" />
     <img width="255" height="186" alt="image" src="https://github.com/user-attachments/assets/1105564d-9a56-49d2-9791-f373845a197c" />
 
@@ -30,8 +30,8 @@ Dcemapper is a Python desktop application designed for researchers and clinician
     - `RCEmax`: Maximum Relative Contrast Enhancement. 
     - `Time to RCE`: Time point of peak enhancement.
 
-      <img width="390" height="127" alt="image" src="https://github.com/user-attachments/assets/07c9ab86-727a-4f76-a451-ad53a3f3eced" />
-      <img width="198" height="179" alt="image" src="https://github.com/user-attachments/assets/67872f97-5515-4086-98a0-632753a24669" />
+   <img width="390" height="127" alt="image" src="https://github.com/user-attachments/assets/07c9ab86-727a-4f76-a451-ad53a3f3eced" />
+   <img width="198" height="179" alt="image" src="https://github.com/user-attachments/assets/67872f97-5515-4086-98a0-632753a24669" />
 
   - `🎨 Customization`: Apply custom colormaps to enhance image contrast and perception.
    
