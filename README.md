@@ -46,7 +46,7 @@ Dcemapper is a Python desktop application designed for researchers and clinician
 
   - `↔️ Layout`: Resizable panels to customize the workspace to your needs.
 
-## Authors
+## 👨‍💻 Authors
 <table border="0">
   <tr>
     <td align="center">
