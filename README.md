@@ -51,7 +51,11 @@ Dcemapper is a Python desktop application designed for researchers and clinician
 
   - `⌨️ Shortcuts`: Full keyboard shortcut support for every action.
 
-    <img width="300" height="400" alt="image" src="https://github.com/user-attachments/assets/43835a35-b5a3-413b-b04a-2737aaf15804" />
+    <img width="300" height="400" alt="image" src="https://github.com/user-attachments/assets/43835a35-b5a3-413b-b04a-2737aaf15804" /><br>
+  
+  - `🖱️ Click Record`: Displays a log of each click event, including the interaction intensity and the 3D position of the selected voxel.<br>
+    
+    <img width="900" height="200" alt="image" src="https://github.com/user-attachments/assets/aea98c37-c325-49dd-bf2f-d5a24f7ebfa2" /><br>
 
   - `↔️ Layout`: Resizable panels to customize the workspace to your needs.
 
