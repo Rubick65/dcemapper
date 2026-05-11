@@ -7,7 +7,7 @@ Dcemapper is a Python desktop application designed for researchers and clinician
     - `Single file`: Opens individual NIfTI files directly.
     - `Processed files`: Reloads previously processed outputs.
     - `Bruker conversion`: Converts raw Bruker data to NIfTI format.
-    - 
+    
   <img width="400" height="700" alt="image" src="https://github.com/user-attachments/assets/2583a4c7-6c35-4ddc-8ee1-278212739ada" /><br>
   <img width="300" height="200" alt="image" src="https://github.com/user-attachments/assets/0c81b8f0-8cb1-478d-aaeb-a914169cd5cc" />
     
