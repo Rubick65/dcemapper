@@ -5,6 +5,13 @@
 <h1> Dcemapper </h1> 
 Dcemapper is a Python desktop application designed for researchers and clinicians working with Dynamic Contrast Enhancement (DCE) MRI data. It provides an end-to-end workflow — from raw NIfTI file inspection to semi-quantitative parametric mapping — within an intuitive graphical interface.<br>
 
+## 📦 How to install
+Enter dcemapper GitHub and go to realese section, if you are on windows select DCEMapper.exe.<br>
+
+<img width="422" height="195" alt="image" src="https://github.com/user-attachments/assets/f2383fab-4c1f-4026-811e-95bcb3bebe65" /><br>
+
+<img width="343" height="339" alt="image" src="https://github.com/user-attachments/assets/cc5258de-d92a-400d-a95a-80ad5d177f19" />
+
 ## 🖥️ Screen 
 
 <img width="960" height="510" alt="image" src="https://github.com/user-attachments/assets/8388a90d-5c9f-4872-9c4a-be39b1d85f88" /><br>
