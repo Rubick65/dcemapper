@@ -73,7 +73,7 @@ def get_correct_file(sub):
     # If files are valid niftis
     for file in filter(is_nii, sub.iterdir()):
         # If the file is a dce file
-        if "_DCE_acq" in file.name:
+        if "_DCE_acq" in file.name or "_dce" in file.name:
             return file
     return None
 
